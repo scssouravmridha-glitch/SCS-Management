@@ -158,6 +158,7 @@
     window.SCS_ROLE = 'admin';
     if (window.SCS) { SCS.role = 'admin'; SCS.adminPin = '2026'; }
     window.addEventListener('DOMContentLoaded', function () {
+      if (window.SCS && SCS._navWatch) setTimeout(function () { SCS._navWatch(APP); }, 500);
       start({ cfg: { app: APP, appName: APP, store: 'memory', role: 'admin', adminPin: '2026', user: { id: 'test-user', email: 'tester@example.com', name: 'Test Admin' }, site: location.origin + '/', tz: 'Asia/Dhaka', employees: window.SCS_GAS_TEST_EMPLOYEES || [] }, serverAdapter: H.serverAdapterUrl || SERVER_ADAPTER, seed: window.SCS_GAS_TEST_SEED });
     });
     return;
@@ -200,5 +201,41 @@
       });
     });
   }
-  boot();
+  /* ---------------- ভিজিটর লিংক (লগইন ছাড়া শুধু দেখা) ----------------
+   * ?v=<টোকেন> থাকলে: SCS লগইন লাগে না। ডাটাবেসের gas_visitor_data ফাংশন লিংক (আর পিন থাকলে পিন)
+   * যাচাই করে শুধু দেখার জন্য ডাটা দেয়; ভিজিটরের কিছুই ডাটাবেসে লেখা হয় না (মেমরি স্টোর)। */
+  var VISIT = (APP === 'worker-attendance' || (me && me.hasAttribute('data-visitor'))) ? String(new URLSearchParams(location.search).get('v') || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 64) : '';
+  function visitorRpc(pin) {
+    var base = String(window.SCS_CONFIG && SCS_CONFIG.SUPABASE_URL || (window.SCS && SCS.config && SCS.config.SUPABASE_URL) || '').replace(/\/+$/, '');
+    var anon = (window.SCS_CONFIG && SCS_CONFIG.SUPABASE_ANON_KEY) || (window.SCS && SCS.config && SCS.config.SUPABASE_ANON_KEY) || '';
+    return fetch(base + '/rest/v1/rpc/gas_visitor_data', {
+      method: 'POST', headers: { apikey: anon, Authorization: 'Bearer ' + anon, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_app: APP, p_token: VISIT, p_pin: pin || '' })
+    }).then(function (r) { return r.json(); });
+  }
+  function visitorStart(d) {
+    if (worker) { try { worker.terminate(); } catch (e) {} worker = null; }
+    ready = H.ready = false;
+    start({ cfg: { app: APP, appName: APP, store: 'memory', role: 'user', visitor: true, user: { id: 'visitor', email: '', name: 'Visitor' },
+      site: location.href.replace(/apps\/[^/]+\/.*$/, ''), tz: 'Asia/Dhaka', employees: [] },
+      serverAdapter: H.serverAdapterUrl || SERVER_ADAPTER, seed: { sheets: (d && d.sheets) || [], props: (d && d.props) || [] } });
+  }
+  function visitorBoot() {
+    document.documentElement.classList.add('scs-visitor');
+    visitorRpc('').then(function (d) {
+      if (!d || d.ok === false && !d.pin) { visitorStart({ props: [] }); return; }   // লিংক বন্ধ/ভুল -> অ্যাপ নিজেই "deny" দেখায়
+      visitorStart(d);
+    }, function () { visitorStart({ props: [] }); });
+    // পিন দিলে: আগে সার্ভারে যাচাই করে পুরো ডাটা আনা, তারপর অ্যাপের নিজের যাচাই
+    var _send = send;
+    send = function (fn, args) {
+      if (fn !== 'visitorLogin') return _send(fn, args);
+      return visitorRpc(args && args[1]).then(function (d) {
+        if (!d || !d.ok) return { success: false };
+        visitorStart(d);
+        return _send(fn, args);
+      });
+    };
+  }
+  if (VISIT && !test) visitorBoot(); else boot();
 })();

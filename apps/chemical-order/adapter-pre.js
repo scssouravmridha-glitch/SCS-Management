@@ -1,0 +1,2 @@
+/* SCS Chemical Order — আগে-চলা অ্যাডাপ্টার: পিন লগইন স্ক্রিন শুরু থেকেই লুকানো */
+(function () { var s = document.createElement('style'); s.textContent = '#loginView{display:none!important}'; document.head.appendChild(s); })();

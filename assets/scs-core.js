@@ -204,7 +204,29 @@
     return me.access[appKey] || null;
   };
 
-  SCS.signOut = function () {
+  /** ছোট নিশ্চিতকরণ পপআপ -> Promise<boolean> */
+  SCS.confirmBox = function (title, text, okLabel, danger) {
+    injectCss();
+    return new Promise(function (resolve) {
+      var w = document.createElement('div');
+      w.className = 'scs-ui scs-cfm';
+      w.innerHTML = '<div class="bx" role="dialog" aria-modal="true"><div class="ic">' + (danger ? '⚠️' : '❔') + '</div><b>' + SCS.esc(title) + '</b>' +
+        (text ? '<p>' + SCS.esc(text) + '</p>' : '') +
+        '<div class="bt"><button type="button" data-no>' + T('Cancel', 'বাতিল') + '</button><button type="button" data-ok class="' + (danger ? 'd' : '') + '">' + SCS.esc(okLabel || T('OK', 'ঠিক আছে')) + '</button></div></div>';
+      function done(v) { w.remove(); document.removeEventListener('keydown', onKey); resolve(v); }
+      function onKey(e) { if (e.key === 'Escape') done(false); }
+      w.addEventListener('click', function (e) { if (e.target === w || e.target.closest('[data-no]')) done(false); else if (e.target.closest('[data-ok]')) done(true); });
+      document.addEventListener('keydown', onKey);
+      document.body.appendChild(w);
+      setTimeout(function () { var b = w.querySelector('[data-ok]'); if (b) b.focus(); }, 30);
+    });
+  };
+  /** লগআউট: সবসময় আগে নিশ্চিত করতে বলে (force = true দিলে সরাসরি) */
+  SCS.signOut = function (force) {
+    if (force !== true) {
+      return SCS.confirmBox(T('Log out?', 'লগআউট করবেন?'), T('You will be signed out of SCS Management and all apps on this device.', 'এই ডিভাইসে SCS Management ও সব অ্যাপ থেকে লগআউট হয়ে যাবেন।'), T('Log out', 'লগআউট'), true)
+        .then(function (ok) { if (ok) return SCS.signOut(true); });
+    }
     try {
       Object.keys(localStorage).forEach(function (k) {
         if (/^scs_/.test(k) && !/lang|theme/.test(k)) localStorage.removeItem(k);
@@ -378,17 +400,30 @@
       '.scs-hslot>button,.scs-hslot>a{height:32px!important;min-height:0!important;flex:none!important;box-sizing:border-box}' +
       '@media (max-width:640px){' +
         '.scs-hrow{gap:6px!important;padding-left:8px!important;padding-right:8px!important}' +
-        '.scs-hrow>:first-child *{white-space:nowrap!important;text-overflow:ellipsis;overflow:hidden}' +
+        // অ্যাপের পুরো নাম দেখা যাবে: দরকারে ছোট অক্ষরে দুই লাইনে
+        '.scs-hrow>:first-child *{white-space:normal!important;text-overflow:clip!important;overflow:visible!important;word-break:normal}' +
         '.scs-hrow>:first-child em,.scs-hrow>:first-child small,.scs-hrow>:first-child i:not(:only-child){display:none!important}' +
         '.scs-hrow>:first-child img{width:22px!important;height:22px!important}' +
         '.scs-hrow>:first-child img,.scs-hrow>:first-child i,.scs-hrow>:first-child [data-scs-logo]{flex:none!important;overflow:visible!important;text-overflow:clip!important}' +
-        '.scs-hrow>:first-child h1,.scs-hrow>:first-child b,.scs-hrow>:first-child span{font-size:13px!important;line-height:1.2!important}' +
+        '.scs-hrow>:first-child h1,.scs-hrow>:first-child b,.scs-hrow>:first-child span,.scs-hrow>:first-child div{font-size:12px!important;line-height:1.12!important;letter-spacing:-.1px}' +
+        '.scs-hrow>:first-child{padding-top:3px!important;padding-bottom:3px!important;max-width:42vw}' +
         '.scs-hslot{gap:3px!important}' +
         '.scs-hslot>button,.scs-hslot>a,.scs-hslot .scs-gear{height:29px!important;min-width:29px!important;width:auto;padding:0 6px!important;border-radius:9px!important;font-size:11.5px!important}' +
         '.scs-hslot .scs-gear{width:29px!important;padding:0!important}' +
         '.scs-hslot svg{width:15px!important;height:15px!important}' +
         '.scs-hslot>button:has(svg)>span:not(.dot):not(:has(svg)):not(:has(img)){display:none!important}' +
+        // মেনু বার ভেঙে নিচে না নেমে এক লাইনে, আঙুল দিয়ে ডানে-বামে সরানো যায়
+        '.scs-swipe{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;scroll-snap-type:x proximity;grid-template-columns:none!important;max-width:100%}' +
+        '.scs-swipe::-webkit-scrollbar{display:none}' +
+        '.scs-swipe>*{flex:0 0 auto!important;scroll-snap-align:start;white-space:nowrap}' +
       '}' +
+      /* নিশ্চিতকরণ পপআপ */
+      '.scs-cfm{position:fixed;inset:0;z-index:2147483600;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:16px;animation:scsFade .15s ease}' +
+      '.scs-cfm .bx{width:100%;max-width:340px;background:#fff;color:#0f172a;border-radius:18px;padding:20px 18px 16px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.3);font-family:inherit}' +
+      '.scs-cfm .ic{font-size:30px;line-height:1;margin-bottom:6px}.scs-cfm b{display:block;font-size:17px;margin-bottom:4px}.scs-cfm p{margin:0 0 14px;font-size:13.5px;color:#475569;line-height:1.5}' +
+      '.scs-cfm .bt{display:flex;gap:8px}.scs-cfm .bt button{flex:1;height:40px;border-radius:12px;border:1px solid #e2e8f0;background:#f8fafc;color:#0f172a;font-weight:700;font-size:14px;cursor:pointer}' +
+      '.scs-cfm .bt button[data-ok]{background:#e91e63;border-color:#e91e63;color:#fff}.scs-cfm .bt button.d{background:#dc2626;border-color:#dc2626}' +
+      '@keyframes scsFade{from{opacity:0}to{opacity:1}}' +
       '.scs-hd-logo{width:100%;height:100%;object-fit:contain;border-radius:inherit;background:#fff;padding:2px}' +
       '@media print{.scs-gear,.scs-menu,.scs-sheet,.scs-fab,.scs-toast{display:none!important}}';
     document.head.appendChild(css);
@@ -813,6 +848,79 @@
     ensure();
   }
 
+  /* ---------------- অ্যাপের নিজের সেটিংস বাটন -> SCS গিয়ার মেনু (শুধু সেই অ্যাপের পেজে) ---------------- */
+  /** sel = অ্যাপের বাটনের CSS selector; বাটনটা লুকিয়ে গিয়ার মেনুতে একটা লাইন যোগ হয় */
+  SCS.absorbButton = function (sel, icon, label) {
+    sel = sel.split(',').map(function (s) { return s.trim() + ':not([data-scs-gear])'; }).join(',');   // SCS এর নিজের গিয়ার বাদ
+    var st = document.createElement('style');
+    st.textContent = sel + '{display:none!important}';
+    (document.head || document.documentElement).appendChild(st);
+    // অ্যাপের CSS (যেমন Tailwind এর লেয়ার) টপকে গেলেও লুকানো থাকে: সরাসরি এলিমেন্টে
+    function hideNow() { [].forEach.call(document.querySelectorAll(sel), function (b) { if (b.style.getPropertyValue('display') !== 'none') b.style.setProperty('display', 'none', 'important'); }); }
+    var hmo = new MutationObserver(function () { clearTimeout(hmo._t); hmo._t = setTimeout(hideNow, 30); });
+    function startHide() { hideNow(); hmo.observe(document.body, { childList: true, subtree: true }); }
+    if (document.body) startHide(); else document.addEventListener('DOMContentLoaded', startHide);
+    SCS.gearExtras = SCS.gearExtras || [];
+    SCS.gearExtras.push({
+      icon: icon || '⚙️', label: label,
+      show: function () { return !!document.querySelector(sel); },
+      run: function () { var b = document.querySelector(sel); if (b) b.click(); }
+    });
+  };
+
+  /* ---------------- মেনু বার: মোবাইলে সোয়াইপ + রিলোডে আগের ট্যাব ---------------- */
+  function navWatch(appKey) {
+    var KEY = 'scs_tab_' + appKey, restored = false, t = null;
+    var mobile = window.matchMedia ? window.matchMedia('(max-width: 640px)') : { matches: false };
+    function items(el) { return [].slice.call(el.children).filter(function (c) { return /^(BUTTON|A)$/.test(c.tagName) && c.offsetWidth; }); }
+    function navs() {
+      var hdr = document.querySelector('header.scs-hdr');
+      var hb = hdr ? hdr.getBoundingClientRect().bottom : 0;
+      return [].slice.call(document.querySelectorAll('nav, div')).filter(function (el) {
+        if (el.closest('header') || el.closest('.scs-ui') || el.closest('[role="dialog"]')) return false;
+        var k = items(el); if (k.length < 3) return false;
+        var r = el.getBoundingClientRect();
+        return r.top >= hb - 4 && r.top < hb + 260 && !el.querySelector('input,select,textarea');
+      }).slice(0, 2);
+    }
+    function label(b) { return (b.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40); }
+    function run() {
+      var list = navs();
+      list.forEach(function (el) {
+        var k = items(el);
+        // মোবাইলে একাধিক লাইনে ভাঙলে -> এক লাইনে সোয়াইপ
+        if (mobile.matches) {
+          var tops = {}; k.forEach(function (c) { tops[Math.round(c.getBoundingClientRect().top)] = 1; });
+          if (Object.keys(tops).length > 1 || el.classList.contains('scs-swipe')) el.classList.add('scs-swipe');
+        }
+        if (!el.__scsTab) {
+          el.__scsTab = true;
+          el.addEventListener('click', function (e) {
+            var b = e.target.closest('button,a'); if (!b || b.parentElement !== el) return;
+            try { sessionStorage.setItem(KEY, label(b)); } catch (x) {}
+          });
+        }
+      });
+      // রিলোডের পর আগের ট্যাবে (অ্যাডমিন/লগআউট ট্যাব বাদ)
+      if (!restored && list.length) {
+        restored = true;
+        var want = ''; try { want = sessionStorage.getItem(KEY) || ''; } catch (x) {}
+        if (want && !/admin|অ্যাডমিন|প্রশাসক|logout|লগআউট|^all \d|export|এক্সপোর্ট/i.test(want)) {
+          var b = items(list[0]).filter(function (c) { return label(c) === want; })[0];
+          if (b && !b.classList.contains('active') && b.getAttribute('aria-current') !== 'page') setTimeout(function () { b.click(); }, 80);
+        }
+      }
+    }
+    if (navWatch.on) return; navWatch.on = true;
+    injectCss();
+    var mo = new MutationObserver(function () { clearTimeout(t); t = setTimeout(run, 120); });
+    mo.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(run, 150); });
+    setTimeout(run, 400);
+  }
+
+  SCS._navWatch = navWatch;   // লোকাল টেস্ট মোডের জন্য
+
   /* ---------------- app boot ---------------- */
   /**
    * SCS.bootApp('app-key', ['app.js'], { header: 'css selector', darkGear: false, onAdmin: fn })
@@ -841,6 +949,7 @@
       return SCS.loadAdminPin(appKey).then(function () {
         readyResolve(me);
         mountInHeader(appKey, role, opts);
+        try { navWatch(appKey); } catch (e) {}
         SCS.startNotifications();
         sb.auth.onAuthStateChange(function (ev) { if (ev === 'SIGNED_OUT') location.href = SCS.url('/'); });
         var chain = Promise.resolve();

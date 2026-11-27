@@ -11,7 +11,15 @@ logout = function () { return { success: true }; };
 changePin = function () {
   return { success: false, error: 'Change the admin PIN in SCS Management → Admin Console → Apps & admin PINs. / অ্যাডমিন পিন Admin Console থেকে বদলান।' };
 };
-visitorOk_ = function () { return false; };
+// ভিজিটর লিংক: শুধু ভিজিটর মোডে (লগইন ছাড়া, ডাটাবেস যাচাই করে শুধু দেখার ডাটা দেয়) আসল নিয়ম চলে
+if (!SCS_GAS.isVisitor()) visitorOk_ = function () { return false; };
+// ভিজিটর লিংকের ঠিকানা = এই সাইটের অ্যাপ পেজ + ?v=টোকেন
+var __scsVInfo = visitorInfo_;
+visitorInfo_ = function () {
+  var r = __scsVInfo.apply(this, arguments);
+  try { var s = vSettings_(); if (s.token) r.url = ScriptApp.getService().getUrl() + '?v=' + s.token; } catch (e) {}
+  return r;
+};
 
 var __scsWGetData = getData;
 getData = function (ctx) {

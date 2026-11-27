@@ -10,5 +10,5 @@
   { "find": "setPin(v2);if(v2===`2019`)check(v2)", "replace": "setPin(v2);if(window.SCS_ROLE!==`admin`&&scsUserOk_(v2))check(v2)" },
   { "find": "if(pin===`2019`)return!ctx.isSelectedMonthPrevious", "replace": "if(scsUserOk_(pin))return!ctx.isSelectedMonthPrevious" },
   { "find": "let[t2,n2]=(0,_.useState)(()=>localStorage.getItem(ae)===`true`)", "replace": "let[t2,n2]=(0,_.useState)(()=>!!window.SCS_ROLE)" },
-  { "find": "he2=()=>{n2(false),", "replace": "he2=()=>{window.SCS&&SCS.signOut(),n2(false)," }
+  { "find": "he2=()=>{n2(false),", "replace": "he2=()=>{if(window.SCS){SCS.signOut();return}n2(false)," }
 ]

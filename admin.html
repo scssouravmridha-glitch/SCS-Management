@@ -138,12 +138,31 @@
     <div class="card pad sec" style="max-width:760px">
       <h2 class="h2" data-i="Full backup of all apps|সব অ্যাপের সম্পূর্ণ ব্যাকআপ"></h2>
       <p class="small" style="margin-top:-4px" data-i="One JSON file with the lifetime data of every app (orders, attendance, monthly reports, employees, users, activity log, settings). New apps are included automatically. Photos and PDFs stay in Supabase Storage and are not inside the file.|একটা JSON ফাইলে সব অ্যাপের লাইফটাইম ডাটা (অর্ডার, হাজিরা, মাসিক রিপোর্ট, এমপ্লয়ি, ইউজার, অ্যাক্টিভিটি লগ, সেটিংস)। নতুন অ্যাপ যোগ হলে সেটাও নিজে থেকে আসে। ছবি ও PDF Supabase Storage এ থাকে, ফাইলের ভেতরে নয়।"></p>
+      <div class="toolbar" style="margin:0 0 8px;flex-wrap:wrap;gap:6px;align-items:center">
+        <select class="in-f" id="bkScope" style="width:auto;min-width:130px">
+          <option value="life" data-i="Lifetime (everything)|লাইফটাইম (সব)"></option>
+          <option value="year" data-i="One year|এক বছর"></option>
+          <option value="month" data-i="One month|এক মাস"></option>
+          <option value="range" data-i="Date to date|তারিখ থেকে তারিখ"></option>
+        </select>
+        <input class="in-f hidden" id="bkYear" type="number" min="2019" max="2100" style="width:96px" />
+        <input class="in-f hidden" id="bkMonth" type="month" style="width:auto" />
+        <input class="in-f hidden" id="bkFrom" type="date" style="width:auto" />
+        <input class="in-f hidden" id="bkTo" type="date" style="width:auto" />
+      </div>
       <div class="toolbar" style="margin:0">
         <button class="btn g" type="button" id="bkDownload">⬇ <span data-i="Download backup now|এখনই ব্যাকআপ ডাউনলোড"></span></button>
         <button class="btn g" type="button" id="bkRestoreBtn">⬆ <span data-i="Restore from file|ফাইল থেকে রিস্টোর"></span></button>
         <input type="file" id="bkFile" accept=".json,application/json" class="hidden" />
       </div>
       <div id="bkRestoreOut"></div>
+    </div>
+
+    <div class="card pad sec" style="max-width:760px;border:2px solid #fecaca">
+      <h2 class="h2" style="color:#dc2626" data-i="⚠️ Reset — erase all app data|⚠️ রিসেট — সব অ্যাপের সব ডাটা মুছে ফেলা"></h2>
+      <p class="small" style="font-size:13.5px;line-height:1.7" data-i="Erases the data of every app (orders, attendance, reports, leave, expenses, requisitions, wages, collections, app settings, notifications). Accounts, app access, PINs and system settings stay. Before reset you must download a LIFETIME backup; then a code is emailed to you and you confirm several times.|সব অ্যাপের সব ডাটা (অর্ডার, হাজিরা, রিপোর্ট, ছুটি, খরচ, রিকুইজিশন, মজুরি, কালেকশন, অ্যাপের সেটিং, নোটিফিকেশন) মুছে যাবে। অ্যাকাউন্ট, অ্যাপের অ্যাক্সেস, পিন আর সিস্টেম সেটিং থাকবে। রিসেটের আগে লাইফটাইম ব্যাকআপ ডাউনলোড বাধ্যতামূলক; তারপর আপনার ইমেইলে কোড যাবে আর কয়েকবার নিশ্চিত করতে হবে।"></p>
+      <button class="btn" type="button" id="rsStart" style="background:#dc2626;color:#fff" data-i="Start reset…|রিসেট শুরু…"></button>
+      <div id="rsBox"></div>
     </div>
 
     <div class="card pad sec" style="max-width:760px">
@@ -209,7 +228,7 @@
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
   var T = SCS.t, esc = SCS.esc, sb = SCS.sb;
-  var SCHEMA_NEED = 10;
+  var SCHEMA_NEED = 11;
   var st = { status: 'all', q: '', profiles: [], access: [], apps: [], pins: {}, me: null, keep: {}, flash: '' };
   var tt = null;
   function toast(t) { var e = $('toast'); e.textContent = t; e.classList.remove('hidden'); clearTimeout(tt); tt = setTimeout(function () { e.classList.add('hidden'); }, 3200); }
@@ -772,17 +791,114 @@
     }).catch(function (e) { bkMsg(SCS.err(e), 'bad'); }).then(function () { $('bkNow').disabled = false; });
   };
   $('bkRefresh').onclick = loadBkStatus;
-  $('bkDownload').onclick = function () {
-    $('bkDownload').disabled = true;
-    SCS.q(sb.rpc('scs_backup_snapshot')).then(function (data) {
+  /* ব্যাকআপের সময়কাল: লাইফটাইম / বছর / মাস / তারিখ থেকে তারিখ */
+  (function () {
+    var now = new Date();
+    $('bkYear').value = now.getFullYear();
+    $('bkMonth').value = SCS.fmt(now, 'yyyy-MM');
+    $('bkFrom').value = SCS.fmt(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd');
+    $('bkTo').value = SCS.fmt(now, 'yyyy-MM-dd');
+    $('bkScope').onchange = function () {
+      var v = this.value;
+      $('bkYear').classList.toggle('hidden', v !== 'year');
+      $('bkMonth').classList.toggle('hidden', v !== 'month');
+      $('bkFrom').classList.toggle('hidden', v !== 'range');
+      $('bkTo').classList.toggle('hidden', v !== 'range');
+    };
+  })();
+  function bkRange() {
+    var v = $('bkScope').value, f = null, t = null, label = 'lifetime';
+    if (v === 'year') { var y = Number($('bkYear').value) || new Date().getFullYear(); f = y + '-01-01'; t = y + '-12-31'; label = 'year-' + y; }
+    if (v === 'month') { var m = $('bkMonth').value; if (m) { var d = new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0); f = m + '-01'; t = m + '-' + String(d.getDate()).padStart(2, '0'); label = 'month-' + m; } }
+    if (v === 'range') { f = $('bkFrom').value || null; t = $('bkTo').value || null; label = (f || 'start') + '_to_' + (t || 'today'); }
+    return { p_from: f, p_to: t, label: label };
+  }
+  function downloadBackup(range) {
+    return SCS.q(sb.rpc('scs_backup_snapshot', { p_from: range.p_from, p_to: range.p_to })).then(function (data) {
       var blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'SCS-backup-' + SCS.fmt(new Date(), 'yyyy-MM-dd_HH-mm-ss') + '.json';
+      a.download = 'SCS-backup-' + range.label + '-' + SCS.fmt(new Date(), 'yyyy-MM-dd_HH-mm-ss') + '.json';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
-      toast(T('Backup downloaded', 'ব্যাকআপ ডাউনলোড হয়েছে'));
-    }).catch(function (e) { toast(SCS.err(e)); }).then(function () { $('bkDownload').disabled = false; });
+      return data;
+    });
+  }
+  $('bkDownload').onclick = function () {
+    $('bkDownload').disabled = true;
+    downloadBackup(bkRange()).then(function () { toast(T('Backup downloaded', 'ব্যাকআপ ডাউনলোড হয়েছে')); })
+      .catch(function (e) { toast(SCS.err(e)); }).then(function () { $('bkDownload').disabled = false; });
+  };
+
+  /* ---------- রিসেট: ৭ ধাপে নিশ্চিত করা ---------- */
+  var RS = null;
+  function rsRender() {
+    var b = $('rsBox'); if (!RS) { b.innerHTML = ''; return; }
+    var st = RS.step, h = '<div style="margin-top:12px;padding:14px;border-radius:14px;background:#fef2f2;border:1px solid #fecaca">' +
+      '<div class="small" style="font-weight:800;color:#b91c1c;margin-bottom:8px">' + T('Step ', 'ধাপ ') + st + ' / 7</div>';
+    if (st === 1) h += '<p style="margin:0 0 10px">' + T('Everything in every app will be permanently erased. This cannot be undone without a backup file.', 'সব অ্যাপের সবকিছু চিরতরে মুছে যাবে। ব্যাকআপ ফাইল ছাড়া এটা আর ফেরানো যাবে না।') + '</p>' +
+      '<label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="rsC1"> ' + T('I understand that ALL data will be erased.', 'আমি বুঝেছি যে সব ডাটা মুছে যাবে।') + '</label>';
+    if (st === 2) h += '<p style="margin:0 0 10px">' + T('First download a LIFETIME backup of everything. Keep the file safe — it is the only way back.', 'আগে সবকিছুর লাইফটাইম ব্যাকআপ ডাউনলোড করুন। ফাইলটা যত্নে রাখুন — ফেরত আনার এটাই একমাত্র উপায়।') + '</p>' +
+      '<button class="btn p" type="button" id="rsBk">⬇ ' + T('Download lifetime backup', 'লাইফটাইম ব্যাকআপ ডাউনলোড') + '</button> ' + (RS.bk ? '<b style="color:#059669">✅ ' + T('Done', 'হয়েছে') + '</b>' : '');
+    if (st === 3) h += '<p style="margin:0 0 8px;font-weight:700">' + T('Question: whose data will this reset erase?', 'প্রশ্ন: এই রিসেটে কার ডাটা মুছবে?') + '</p>' +
+      ['one|' + T('Only one app', 'শুধু একটা অ্যাপের'), 'all|' + T('All apps of the whole company', 'পুরো কোম্পানির সব অ্যাপের'), 'none|' + T('Nothing will be erased', 'কিছুই মুছবে না')].map(function (o) {
+        var p = o.split('|'); return '<label style="display:block;margin:4px 0"><input type="radio" name="rsQ" value="' + p[0] + '"> ' + esc(p[1]) + '</label>';
+      }).join('');
+    if (st === 4) h += '<p style="margin:0 0 8px">' + T('Type your own account email to confirm it is you:', 'আপনি নিজেই কি না নিশ্চিত করতে নিজের অ্যাকাউন্টের ইমেইল লিখুন:') + '</p><input class="in-f" id="rsEmail" autocomplete="off" />';
+    if (st === 5) h += '<p style="margin:0 0 8px">' + (RS.sent ? T('A 6-digit code was sent to ', '৬ সংখ্যার কোড পাঠানো হয়েছে: ') + '<b>' + esc(RS.sent) + '</b>' : T('A code will be emailed to your account email.', 'আপনার অ্যাকাউন্টের ইমেইলে একটা কোড যাবে।')) + '</p>' +
+      '<button class="btn g" type="button" id="rsSend">' + (RS.sent ? T('Send again', 'আবার পাঠান') : T('Email me the code', 'ইমেইলে কোড পাঠান')) + '</button> ' +
+      (RS.sent ? '<input class="in-f" id="rsCode" inputmode="numeric" maxlength="6" placeholder="••••••" style="width:120px;display:inline-block;margin-left:6px;letter-spacing:4px" />' : '');
+    if (st === 6) h += '<p style="margin:0 0 8px">' + T('Type exactly', 'হুবহু লিখুন') + ': <code style="font-weight:900">ERASE ALL DATA</code></p><input class="in-f" id="rsPhrase" autocomplete="off" />';
+    if (st === 7) h += '<p style="margin:0 0 8px;font-weight:800;color:#b91c1c">' + T('Last chance. After you press the red button everything is erased.', 'শেষ সুযোগ। লাল বাটন চাপলে সব মুছে যাবে।') + '</p>' +
+      '<button class="btn" type="button" id="rsGo" style="background:#dc2626;color:#fff" disabled>' + T('Erase everything', 'সব মুছে ফেলুন') + ' (<span id="rsCd">10</span>)</button>';
+    h += '<div id="rsErr" class="small" style="color:#b91c1c;margin-top:8px;font-weight:700">' + esc(RS.err || '') + '</div>' +
+      '<div style="display:flex;gap:8px;margin-top:12px"><button class="btn g" type="button" id="rsCancel">' + T('Cancel', 'বাতিল') + '</button>' +
+      (st < 7 ? '<button class="btn p" type="button" id="rsNext">' + T('Next', 'পরের ধাপ') + ' →</button>' : '') + '</div></div>';
+    b.innerHTML = h; RS.err = '';
+    $('rsCancel').onclick = function () { RS = null; rsRender(); };
+    if ($('rsBk')) $('rsBk').onclick = function () {
+      this.disabled = true;
+      downloadBackup({ p_from: null, p_to: null, label: 'lifetime-before-reset' }).then(function () { RS.bk = true; rsRender(); }, function (e) { RS.err = SCS.err(e); rsRender(); });
+    };
+    if ($('rsSend')) $('rsSend').onclick = function () {
+      this.disabled = true;
+      SCS.callFn('password-reset', { action: 'resetCode' }).then(function (r) { RS.sent = r.to; rsRender(); }, function (e) { RS.err = SCS.err(e); rsRender(); });
+    };
+    if ($('rsGo')) {
+      var n = 10, iv = setInterval(function () {
+        if (!RS || !$('rsCd')) { clearInterval(iv); return; }
+        n--; $('rsCd').textContent = n;
+        if (n <= 0) { clearInterval(iv); $('rsGo').disabled = false; }
+      }, 1000);
+      $('rsGo').onclick = function () {
+        SCS.confirmBox(T('Erase ALL data now?', 'এখনই সব ডাটা মুছবেন?'), T('This is the final confirmation.', 'এটাই শেষ নিশ্চিতকরণ।'), T('Erase', 'মুছে ফেলুন'), true).then(function (ok) {
+          if (!ok) return;
+          $('rsGo').disabled = true;
+          SCS.q(sb.rpc('scs_reset_all', { p_code: RS.code, p_phrase: RS.phrase })).then(function (r) {
+            if (!r || !r.ok) { RS.err = (r && r.error) || 'Failed'; RS.step = 5; RS.sent = RS.sent || ''; rsRender(); return; }
+            $('rsBox').innerHTML = '<div class="msg ok" style="margin-top:12px">✅ ' + T('Reset finished. All app data was erased.', 'রিসেট শেষ। সব অ্যাপের ডাটা মুছে গেছে।') + '<br>' +
+              Object.keys(r.deleted || {}).map(function (k) { return esc(k) + ': ' + r.deleted[k]; }).join(' · ') + '</div>';
+            RS = null;
+          }, function (e) { RS.err = SCS.err(e); rsRender(); });
+        });
+      };
+    }
+    if ($('rsNext')) $('rsNext').onclick = function () {
+      var s = RS.step, bad = '';
+      if (s === 1 && !$('rsC1').checked) bad = T('Tick the box first.', 'আগে বক্সে টিক দিন।');
+      if (s === 2 && !RS.bk) bad = T('Download the lifetime backup first.', 'আগে লাইফটাইম ব্যাকআপ ডাউনলোড করুন।');
+      if (s === 3) { var q = document.querySelector('input[name=rsQ]:checked'); if (!q || q.value !== 'all') bad = T('Wrong answer — a reset erases the data of ALL apps.', 'ভুল উত্তর — রিসেট সব অ্যাপের ডাটা মুছে দেয়।'); }
+      if (s === 4 && $('rsEmail').value.trim().toLowerCase() !== String(SCS.me.email || '').toLowerCase()) bad = T('This is not your account email.', 'এটা আপনার অ্যাকাউন্টের ইমেইল নয়।');
+      if (s === 5) { var c = $('rsCode') ? $('rsCode').value.trim() : ''; if (!/^\d{6}$/.test(c)) bad = T('Enter the 6-digit code from the email.', 'ইমেইলের ৬ সংখ্যার কোড দিন।'); else RS.code = c; }
+      if (s === 6) { if ($('rsPhrase').value.trim() !== 'ERASE ALL DATA') bad = T('The text does not match.', 'লেখা মেলেনি।'); else RS.phrase = 'ERASE ALL DATA'; }
+      if (bad) { RS.err = bad; rsRender(); return; }
+      RS.step++; rsRender();
+    };
+  }
+  $('rsStart').onclick = function () {
+    SCS.confirmBox(T('Start the reset process?', 'রিসেট শুরু করবেন?'), T('You will be asked to confirm 7 times.', '৭ বার নিশ্চিত করতে হবে।'), T('Start', 'শুরু'), true).then(function (ok) {
+      if (ok) { RS = { step: 1 }; rsRender(); }
+    });
   };
   $('bkRestoreBtn').onclick = function () { $('bkFile').click(); };
   $('bkFile').onchange = function () {

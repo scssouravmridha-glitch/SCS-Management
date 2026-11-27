@@ -1100,6 +1100,7 @@ var SCS_GAS = {
   role: function () { return CFG.role; },
   isAdmin: function () { return CFG.role === 'admin'; },
   user: function () { return CFG.user; },
+  isVisitor: function () { return !!CFG.visitor; },
   /** SCS Admin Console এর অ্যাপ পিন মিলছে কি না (শুধু Admin রোল) */
   isAdminPin: function (pin) { return CFG.role === 'admin' && CFG.adminPin != null && String(pin == null ? '' : pin).trim() === String(CFG.adminPin); },
   adminPinLen: function () { return String(CFG.adminPin || '0000').length; },

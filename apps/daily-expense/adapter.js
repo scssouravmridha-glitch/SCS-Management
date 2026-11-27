@@ -25,9 +25,9 @@
       window.__scsExpWrapped = true;
       var _out = window.doLogout;
       window.doLogout = function (silent) {
+        if (!silent && window.SCS && SCS.signOut) { SCS.signOut(); return; }   // নিশ্চিত করলে তবেই লগআউট
         if (typeof _out === 'function') _out.apply(this, arguments);
-        if (silent) { setTimeout(enter, 50); return; }     // সেশন শেষ -> নিজে থেকে আবার ঢোকা
-        if (window.SCS && SCS.signOut) SCS.signOut();
+        if (silent) setTimeout(enter, 50);     // সেশন শেষ -> নিজে থেকে আবার ঢোকা
       };
     }
     if (!S.token || !/^scs-/.test(S.token)) {

@@ -4,6 +4,6 @@
   { "find": "n===(ct(`scs_user_pin`)||`2019`)?", "replace": "!!window.SCS_ROLE?" },
   { "find": "setTimeout(e===`2026`?()=>", "replace": "setTimeout(window.SCS_CHECK_ADMIN_PIN(e)?()=>" },
   { "find": "if(pt!==`2026`){", "replace": "if(!window.SCS_CHECK_ADMIN_PIN(pt)){" },
-  { "find": "onLogout:()=>{t(!1),r(!1),f(`dashboard`),", "replace": "onLogout:()=>{window.SCS&&SCS.signOut(),t(!1),r(!1),f(`dashboard`)," },
+  { "find": "onLogout:()=>{t(!1),r(!1),f(`dashboard`),", "replace": "onLogout:()=>{if(window.SCS){SCS.signOut();return}t(!1),r(!1),f(`dashboard`)," },
   { "find": "__ol&&S.createElement(`button`,{type:`button`,onClick:__ol,", "replace": "(window.__scsAttLog=__ol,!1)&&S.createElement(`button`,{type:`button`,onClick:__ol," }
 ]
