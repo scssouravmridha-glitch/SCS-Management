@@ -89,6 +89,8 @@ if (Test-Path $pf) {
 # ভার্সন নম্বর: ব্রাউজার/GitHub Pages পুরনো ফাইল ক্যাশ থেকে দিলেও নতুন ফাইল আসে
 $stamp = (Get-Date).ToString('yyyyMMddHHmm')
 $html = $html.Replace('SCS_GAS_LOAD("app.js")', 'SCS_GAS_LOAD("app.js?v=' + $stamp + '")')
+$tail = $tail.Replace('src="adapter.js"', 'src="adapter.js?v=' + $stamp + '"')
+$head = $head.Replace('src="adapter-pre.js"', 'src="adapter-pre.js?v=' + $stamp + '"')
 $head = $head.Replace('assets/scs-core.js"', 'assets/scs-core.js?v=' + $stamp + '"').Replace('assets/gas/host.js"', 'assets/gas/host.js?v=' + $stamp + '"')
 # পুরনো index.html ক্যাশে থেকে নতুন app.js লোড হলে (ইঞ্জিন নেই) -> একবার নতুন করে পেজ লোড
 $guard = "if(!window.SCS_GAS_HOST){(function(){var k='scs_reload_$Key';try{if(!sessionStorage.getItem(k)){sessionStorage.setItem(k,'1');location.replace(location.pathname+'?r='+Date.now()+location.hash);return}}catch(e){}alert('This page is outdated: please upload the new apps/$Key/index.html to the site, then reload.\nপেজটা পুরনো: সাইটে নতুন apps/$Key/index.html আপলোড করে রিলোড করুন।')})();throw new Error('SCS: outdated index.html')}`ntry{sessionStorage.removeItem('scs_reload_$Key')}catch(e){}`n"

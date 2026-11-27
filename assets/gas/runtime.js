@@ -1111,10 +1111,15 @@ var SCS_GAS = {
 };
 
 /* ------------------------------------------------------------------ কল চালানো */
+/* Apps Script এর মতো: প্রতিটা সার্ভার কল নতুন করে শুরু (গ্লোবাল ভ্যারিয়েবল/ক্যাশ আগের কল থেকে থাকে না) */
+var SOURCE = '', FRESH = false;
+function loadSource() { (0, eval)(SOURCE); }
 function runCall(fnName, args) {
-  var fn = self[fnName];
-  if (typeof fn !== 'function') throw gasError('Script function not found: ' + fnName);
   for (var attempt = 1; attempt <= 3; attempt++) {
+    if (!FRESH) loadSource();
+    FRESH = false;
+    var fn = self[fnName];
+    if (typeof fn !== 'function') throw gasError('Script function not found: ' + fnName);
     TX = newTx();
     var result, err = null;
     try { result = fn.apply(self, args || []); }
@@ -1166,7 +1171,9 @@ self.onmessage = function (ev) {
     STORE = CFG.store === 'memory' ? new MemoryStore(m.seed) : new SupabaseStore();
     HTML_FILES = m.files || {};
     try {
-      (0, eval)(m.code + '\n;\n' + (m.adapter || '') + '\n//# sourceURL=' + CFG.app + '-Code.gs');
+      // উপরের লেভেলের const/let -> var (প্রতি কলে আবার চালানো যায়)
+      SOURCE = (m.code + '\n;\n' + (m.adapter || '')).replace(/^(const|let)(\s)/gm, 'var$2') + '\n//# sourceURL=' + CFG.app + '-Code.gs';
+      loadSource(); FRESH = true;
       self.postMessage({ type: 'ready' });
     } catch (e) {
       self.postMessage({ type: 'fatal', error: 'Code.gs error: ' + (e && e.message || e) });

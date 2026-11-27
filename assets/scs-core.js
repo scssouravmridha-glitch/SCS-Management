@@ -609,6 +609,11 @@
       h += '<button type="button" class="it" data-m="notif"><span class="ic">🔔</span>' + T('Notifications', 'নোটিফিকেশন') + (N.unread ? '<span class="cnt">' + N.unread + '</span>' : '') + '</button>';
       if (me.active) h += '<button type="button" class="it" data-m="activity"><span class="ic">🕘</span>' + T('Activity Log', 'অ্যাক্টিভিটি লগ') + '</button>';
       if (opts.appKey && opts.role === 'admin' && opts.onAdmin) h += '<button type="button" class="it" data-m="admin"><span class="ic">🔐</span>' + T('Admin panel', 'অ্যাডমিন প্যানেল') + '</button>';
+      // অ্যাপের নিজের সেটিং/লগ বাটন (উপরে আলাদা আইকন না রেখে এই মেনুতেই)
+      (SCS.gearExtras || []).forEach(function (x, i) {
+        if (x.show && !x.show()) return;
+        h += '<button type="button" class="it" data-m="x' + i + '"><span class="ic">' + (x.icon || '•') + '</span>' + SCS.esc(typeof x.label === 'function' ? x.label() : x.label) + '</button>';
+      });
       h += '<button type="button" class="it" data-m="push"><span class="ic">📲</span>' + T('Push notifications', 'পুশ নোটিফিকেশন') + '<span class="sw" data-pushsw>…</span></button>';
       h += '<div class="sep"></div>';
       h += '<a class="it" href="' + SCS.url('/profile.html') + '"><span class="ic">👤</span>' + T('My profile', 'আমার প্রোফাইল') + '</a>';
@@ -646,6 +651,7 @@
         var m = e.target.closest('[data-m]'); if (!m) return;
         var k = m.getAttribute('data-m');
         menu.classList.remove('open');
+        if (/^x\d+$/.test(k)) { var ex = (SCS.gearExtras || [])[+k.slice(1)]; if (ex && ex.run) ex.run(); return; }
         if (k === 'notif') N.open();
         if (k === 'activity') SCS.openActivity(o.appKey || '');
         if (k === 'admin' && o.onAdmin) o.onAdmin();

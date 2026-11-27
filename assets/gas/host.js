@@ -131,7 +131,12 @@
 
   /** অ্যাপের UI স্ক্রিপ্ট — অ্যাকাউন্ট/রোল জানা হওয়ার পরে লোড (লগইন স্ক্রিন এড়াতে) */
   window.SCS_GAS_LOAD = function (src) {
-    var go = function () { var s = document.createElement('script'); s.src = src; document.body.appendChild(s); };
+    var go = function () {
+      var s = document.createElement('script'); s.src = src;
+      // অ্যাপের UI লোড শেষ -> adapter.js এর কাজ (window 'scs-app-loaded' ইভেন্ট)
+      s.onload = function () { window.SCS_APP_LOADED = true; try { window.dispatchEvent(new Event('scs-app-loaded')); } catch (e) {} };
+      document.body.appendChild(s);
+    };
     if (test) { if (H.ready) go(); else H.onReady.push(go); return; }
     var wait = function () { if (window.SCS && SCS.ready) SCS.ready.then(go, function () {}); else setTimeout(wait, 30); };
     wait();

@@ -48,8 +48,10 @@ var __scsLeaveBoot = getBootstrapData;
 getBootstrapData = function () {
   if (!scsLeaveInBoot_) {
     scsLeaveInBoot_ = true;
-    try { initializeSystem_(); scsLeaveSyncEmployees_(); } catch (e) { Logger.log('leave employee sync: ' + e); }
-    if (SCS_GAS.isAdmin()) { try { ensureAutoBackup_(); } catch (e) {} }   // Apps Script এ doGet এ হতো
+    try {
+      initializeSystem_(); scsLeaveSyncEmployees_();
+      if (SCS_GAS.isAdmin()) { try { ensureAutoBackup_(); } catch (e2) {} }   // Apps Script এ doGet এ হতো
+    } catch (e) { Logger.log('leave employee sync: ' + e); }
     finally { scsLeaveInBoot_ = false; }
   }
   var res = __scsLeaveBoot.apply(this, arguments);
