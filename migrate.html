@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Data Migration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/portal.css" />
+</head>
+<body>
+<header class="top">
+  <div class="in">
+    <a class="logo" href="./"><span class="mk"><img data-scs-logo alt="SCS" /></span><span><b>Data Migration</b><small>Google Sheets → Supabase</small></span></a>
+    <div class="act"><a class="chip" href="admin.html">🛡️ <span class="hide-sm">Admin Console</span></a></div>
+  </div>
+</header>
+<main class="wrap" style="max-width:860px">
+  <h1 class="h1">পুরনো Google Sheet থেকে ডাটা আনা</h1>
+  <p class="sub">একবারই করতে হবে। শুধু Super Admin।</p>
+
+  <div class="card pad" style="margin-bottom:14px;border:2px solid #e91e63">
+    <h3 style="margin-top:0">⭐ সবচেয়ে সহজ: পুরো Google Sheet একবারে আনা (.xlsx)</h3>
+    <p class="small" style="font-size:14px;line-height:1.7">
+      যেসব অ্যাপ এখন "Apps Script ইঞ্জিনে" চলে (Attendance, Chemical Order, Report ও পরের অ্যাপগুলো), সেগুলোর পুরনো সব ডাটা Google Sheet-এই থাকে।<br>
+      ১) পুরনো অ্যাপের Google Sheet খুলুন → <b>File → Download → Microsoft Excel (.xlsx)</b>।<br>
+      ২) নিচে অ্যাপ বেছে ফাইলটা দিন → <b>ইমপোর্ট</b>। শিটের প্রতিটা ট্যাব হুবহু নতুন অ্যাপে আসবে (আগের একই নামের ট্যাব বদলে যাবে)।<br>
+      ৩) অ্যাপের নিজের <b>JSON ব্যাকআপ</b> থাকলে সেটা অ্যাপের ভেতরের Backup/Restore দিয়েও আনা যায়।<br>
+      <span style="color:#b45309">পিন, SMS key-এর মতো গোপন সেটিং শিটে থাকে না — অ্যাপের Admin থেকে আবার দিতে হবে।</span>
+    </p>
+    <div class="row2">
+      <div class="field"><label class="l">কোন অ্যাপ</label><select class="in-f" id="xApp"></select></div>
+      <div class="field"><label class="l">Google Sheet (.xlsx)</label><input type="file" id="xFile" accept=".xlsx,.xls,.ods" class="in-f" /></div>
+    </div>
+    <button class="btn p" id="xGo" type="button">ইমপোর্ট করুন</button>
+    <div id="xOut" style="margin-top:14px"></div>
+  </div>
+
+  <div class="card pad" style="margin-bottom:14px">
+    <h3 style="margin-top:0">📦 অ্যাপের নিজের JSON ব্যাকআপ থেকে আনা (সবচেয়ে নিরাপদ)</h3>
+    <p class="small" style="font-size:14px;line-height:1.7">
+      পুরনো Apps Script অ্যাপ থেকে যে JSON ব্যাকআপ ডাউনলোড হয়, নতুন অ্যাপের <b>একই জায়গায় Restore</b> দিলে সব ডাটা হুবহু চলে আসে। কোনো ডাটা হারায় না।<br>
+      <b>🧪 Chemical Order:</b> পুরনো অ্যাপে Admin → Backup &amp; Restore → <i>Lifetime</i> ব্যাকআপ ডাউনলোড → নতুন অ্যাপে একই জায়গায় <i>Restore from JSON</i>।<br>
+      <b>📊 Monthly Report:</b> পুরনো অ্যাপের Admin → Backup থেকে সম্পূর্ণ ব্যাকআপ (JSON) → নতুন অ্যাপে একই জায়গায় Restore।<br>
+      <b>🕘 Employee Attendance:</b> পুরনো অ্যাপে Admin → Backup → <i>লাইফটাইম</i> এক্সপোর্ট → নতুন অ্যাপে Admin → Backup → Restore (<i>Full replace</i>)। তারপর অ্যাপটা একবার খুললেই Report-এ মাসিক সামারি চলে যায়।<br>
+      <b>🌴 Leave Application:</b> পুরনো অ্যাপে Admin → Backup → <i>Lifetime</i> → নতুন অ্যাপে Admin → Backup → Restore (<i>Replace</i>)।<br>
+      <span style="color:#b45309">পিন অ্যাপের ভেতরে থাকে না: সব অ্যাপের অ্যাডমিন পিন Admin Console → Apps &amp; admin PINs থেকে।</span>
+    </p>
+  </div>
+</main>
+
+<script src="assets/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/scs-core.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var sb = SCS.sb;
+
+  function parseCsv(text) {
+    var rows = [], row = [], f = '', q = false;
+    text = text.replace(/^﻿/, '');
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+      else if (c === '"') q = true;
+      else if (c === ',') { row.push(f); f = ''; }
+      else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+      else f += c;
+    }
+    if (f !== '' || row.length) { row.push(f); rows.push(row); }
+    return rows.filter(function (r) { return r.some(function (x) { return String(x).trim() !== ''; }); });
+  }
+  function readFile(inp) {
+    var f = inp.files[0];
+    if (!f) return Promise.resolve(null);
+    return f.text().then(parseCsv);
+  }
+  function col(h, names, def) {
+    var lo = h.map(function (x) { return String(x).trim().toLowerCase().replace(/\s+/g, ''); });
+    for (var i = 0; i < names.length; i++) { var k = lo.indexOf(names[i]); if (k > -1) return k; }
+    return def;
+  }
+  function normDate(v) {
+    v = String(v || '').trim();
+    var m = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if (m) return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2);
+    m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if (m) return m[3] + '-' + ('0' + m[1]).slice(-2) + '-' + ('0' + m[2]).slice(-2);
+    return v;
+  }
+  function chunks(list, n, fn) {
+    var p = Promise.resolve();
+    for (var i = 0; i < list.length; i += n) (function (part) { p = p.then(function () { return fn(part); }); })(list.slice(i, i + n));
+    return p;
+  }
+
+  /* ---------- পুরো Google Sheet (.xlsx) -> ইঞ্জিনের অ্যাপ ---------- */
+  function logX(t, type) { $('xOut').insertAdjacentHTML('beforeend', '<div class="msg ' + (type || 'info') + '">' + SCS.esc(t) + '</div>'); }
+  function loadXlsx() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    return SCS.loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js').then(function () { return window.XLSX; });
+  }
+  function encCell(v) { return v instanceof Date ? { $d: isNaN(v.getTime()) ? null : v.toISOString() } : (v === null || v === undefined ? '' : v); }
+  $('xGo').onclick = function () {
+    var app = $('xApp').value, f = $('xFile').files[0];
+    $('xOut').innerHTML = '';
+    if (!app || !f) { logX('অ্যাপ আর ফাইল দুটোই দিন।', 'bad'); return; }
+    if (!confirm('"' + app + '" অ্যাপে শিটের সব ট্যাব ইমপোর্ট হবে। একই নামের ট্যাব থাকলে সেটা বদলে যাবে। চালিয়ে যাবেন?')) return;
+    $('xGo').disabled = true; logX('ফাইল পড়া হচ্ছে…');
+    Promise.all([loadXlsx(), f.arrayBuffer(), SCS.q(sb.from('gas_sheets').select('name,version').eq('app_key', app))]).then(function (r) {
+      var XLSX = r[0], wb = XLSX.read(r[1], { type: 'array', cellDates: true }), cur = {};
+      (r[2] || []).forEach(function (s) { cur[s.name] = s.version; });
+      var chain = Promise.resolve(), done = [];
+      wb.SheetNames.forEach(function (name, idx) {
+        var rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: '', blankrows: true });
+        while (rows.length && rows[rows.length - 1].every(function (v) { return v === '' || v === null; })) rows.pop();
+        var data = rows.map(function (row) { var a = row.map(encCell); while (a.length && a[a.length - 1] === '') a.pop(); return a; });
+        chain = chain.then(function () {
+          return SCS.q(sb.rpc('gas_commit', { p_app: app, p_sheets: [{ name: name, base: cur[name] || 0, idx: idx, data: data }], p_props: [],
+            p_audit: [{ sheet: name, entity: name, ref: name, action: 'Edit', before: null, after: { imported: f.name, rows: data.length } }] }))
+            .then(function () { done.push(name + ' (' + data.length + ')'); logX('✅ ' + name + ': ' + data.length + ' রো', 'ok'); });
+        });
+      });
+      return chain.then(function () { logX('শেষ! ' + done.length + 'টা ট্যাব এসেছে। এখন অ্যাপটা খুলে দেখুন।', 'ok'); });
+    }).catch(function (e) { logX(SCS.err(e), 'bad'); }).then(function () { $('xGo').disabled = false; });
+  };
+
+  SCS.applyLogo(); SCS.loadBranding();
+  SCS.q(sb.from('apps').select('key,name').order('sort_order')).then(function (apps) {
+    $('xApp').innerHTML = '<option value="">— অ্যাপ বেছে নিন —</option>' + (apps || []).map(function (a) { return '<option value="' + SCS.esc(a.key) + '">' + SCS.esc(a.name) + '</option>'; }).join('');
+  }).catch(function () {});
+  SCS.loadMe().then(function (me) {
+    if (!me) { location.href = SCS.url('/') + '?next=' + encodeURIComponent(SCS.url('/migrate.html')); return; }
+    if (me.isSuper) { SCS.role = 'admin'; window.SCS_ROLE = 'admin'; SCS.adminUnlocked = true; }
+    if (!me.isSuper) { document.querySelector('main').innerHTML = '<div class="empty">শুধু Super Admin এই পেজ ব্যবহার করতে পারবেন।</div>'; }
+  });
+})();
+</script>
+</body>
+</html>
