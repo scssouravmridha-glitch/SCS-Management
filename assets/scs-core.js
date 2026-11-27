@@ -370,6 +370,25 @@
       '.scs-fab{position:fixed;right:12px;top:12px;z-index:2147483000;display:flex;gap:6px}.scs-fab .scs-gear{background:#111827;border-color:#111827;box-shadow:0 8px 24px rgba(0,0,0,.25)}' +
       'a.scs-gear{text-decoration:none}' +
       '@media (max-width:480px){header .scs-gear{width:32px;height:32px;border-radius:10px}header .scs-gear svg{width:17px;height:17px}}' +
+      /* অ্যাপের টপ বার: সব অ্যাপে একই রকম সরু; মোবাইলে নাম ছোট হয়ে সব বাটন এক লাইনে */
+      '.scs-hdr .scs-gear{width:32px;height:32px;border-radius:10px}.scs-hdr .scs-gear svg{width:17px;height:17px}' +
+      '.scs-hrow{flex-wrap:nowrap!important;min-width:0;padding-top:5px!important;padding-bottom:5px!important;min-height:0!important}' +
+      '.scs-hrow>:first-child{min-width:0!important;flex:0 1 auto!important;overflow:hidden}' +
+      '.scs-hslot{flex-wrap:nowrap!important;flex:0 0 auto!important;align-items:center!important;gap:5px!important;margin-left:auto}' +
+      '.scs-hslot>button,.scs-hslot>a{height:32px!important;min-height:0!important;flex:none!important;box-sizing:border-box}' +
+      '@media (max-width:640px){' +
+        '.scs-hrow{gap:6px!important;padding-left:8px!important;padding-right:8px!important}' +
+        '.scs-hrow>:first-child *{white-space:nowrap!important;text-overflow:ellipsis;overflow:hidden}' +
+        '.scs-hrow>:first-child em,.scs-hrow>:first-child small,.scs-hrow>:first-child i:not(:only-child){display:none!important}' +
+        '.scs-hrow>:first-child img{width:22px!important;height:22px!important}' +
+        '.scs-hrow>:first-child img,.scs-hrow>:first-child i,.scs-hrow>:first-child [data-scs-logo]{flex:none!important;overflow:visible!important;text-overflow:clip!important}' +
+        '.scs-hrow>:first-child h1,.scs-hrow>:first-child b,.scs-hrow>:first-child span{font-size:13px!important;line-height:1.2!important}' +
+        '.scs-hslot{gap:3px!important}' +
+        '.scs-hslot>button,.scs-hslot>a,.scs-hslot .scs-gear{height:29px!important;min-width:29px!important;width:auto;padding:0 6px!important;border-radius:9px!important;font-size:11.5px!important}' +
+        '.scs-hslot .scs-gear{width:29px!important;padding:0!important}' +
+        '.scs-hslot svg{width:15px!important;height:15px!important}' +
+        '.scs-hslot>button:has(svg)>span:not(.dot):not(:has(svg)):not(:has(img)){display:none!important}' +
+      '}' +
       '.scs-hd-logo{width:100%;height:100%;object-fit:contain;border-radius:inherit;background:#fff;padding:2px}' +
       '@media print{.scs-gear,.scs-menu,.scs-sheet,.scs-fab,.scs-toast{display:none!important}}';
     document.head.appendChild(css);
@@ -748,10 +767,12 @@
       return null;
     }
     function rightSlot(h) {
-      if (opts.slot) { var s = h.querySelector(opts.slot); if (s) return s; }
-      var row = h.firstElementChild;
-      while (row && row.children.length === 1 && row.firstElementChild.children.length > 1) row = row.firstElementChild;
-      if (!row) return null;
+      var sel = opts.slot || window.SCS_HEADER_SLOT;
+      if (sel) { var s = h.querySelector(sel); if (s) return s; }
+      // হেডারের ভেতরের সারি (একটাই র‍্যাপার থাকলে তার ভেতরে) -> ডান দিকের বাটনের গ্রুপ
+      var row = h;
+      while (row && row.children.length === 1) row = row.firstElementChild;
+      if (!row || row === h && !h.children.length) return null;
       return row.lastElementChild && row.lastElementChild !== row.firstElementChild ? row.lastElementChild : row;
     }
     function swapLogo(h) {
@@ -781,6 +802,10 @@
       gear = SCS.makeGear({ appKey: appKey, appName: appInfo.name, role: role, dark: !!opts.darkGear, onAdmin: opts.onAdmin });
       slot.insertBefore(gear, slot.firstChild);
       slot.insertBefore(SCS.makeHome(!!opts.darkGear), gear);
+      // সব অ্যাপের টপ বার একই রকম সরু, মোবাইলে এক লাইনে (CSS: .scs-hdr / .scs-hrow / .scs-hslot)
+      h.classList.add('scs-hdr'); slot.classList.add('scs-hslot');
+      if (slot.parentElement && slot.parentElement !== h.parentElement) slot.parentElement.classList.add('scs-hrow');
+      document.documentElement.classList.add('scs-has-hdr');
     }
     var mo = new MutationObserver(function () { clearTimeout(mo._t); mo._t = setTimeout(ensure, 60); });
     mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'src'] });

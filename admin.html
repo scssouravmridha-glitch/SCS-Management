@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="assets/portal.css" />
 </head>
 <body>
-<div class="bg-art" aria-hidden="true"><span class="glow"></span><span class="ring r1"></span><span class="ring r2"></span><img data-scs-logo alt="" /></div>
+<div class="bg-art" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span><span class="dots"></span><span class="glow"></span><span class="ring r1"></span><span class="ring r2"></span><img data-scs-logo alt="" /></div>
 <header class="top">
   <div class="in">
     <a class="logo" href="./"><span class="mk"><img data-scs-logo alt="SCS" /></span><span><b data-i="Admin Console|অ্যাডমিন কনসোল"></b><small>SCS Management</small></span></a>
@@ -209,7 +209,7 @@
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
   var T = SCS.t, esc = SCS.esc, sb = SCS.sb;
-  var SCHEMA_NEED = 9;
+  var SCHEMA_NEED = 10;
   var st = { status: 'all', q: '', profiles: [], access: [], apps: [], pins: {}, me: null, keep: {}, flash: '' };
   var tt = null;
   function toast(t) { var e = $('toast'); e.textContent = t; e.classList.remove('hidden'); clearTimeout(tt); tt = setTimeout(function () { e.classList.add('hidden'); }, 3200); }

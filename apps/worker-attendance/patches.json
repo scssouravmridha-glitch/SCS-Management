@@ -1,0 +1,5 @@
+[
+  { "in": "html", "find": "window.BOOT=<?!= boot ?>;", "replace": "window.BOOT={v:''};   /* SCS: অ্যাকাউন্ট দিয়ে ঢোকা (ভিজিটর লিংক বন্ধ) */" },
+  { "in": "html", "find": "async function boot(){if(S.mode=='admin'){S.screen='gate';render();return}", "replace": "async function boot(){if(S.mode=='admin'){S.admin=true;S.token='scs-session';S.screen='app';S.loading=true;render();load();return}" },
+  { "in": "html", "find": "else if(a=='logout'){if(S.token)run('logout',S.token).catch(()=>{});toGate();render()}", "replace": "else if(a=='logout'){if(window.SCS&&SCS.signOut){SCS.signOut();return}if(S.token)run('logout',S.token).catch(()=>{});toGate();render()}" }
+]

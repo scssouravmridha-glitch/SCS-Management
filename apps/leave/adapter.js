@@ -6,7 +6,12 @@
  * ===================================================================== */
 (function () {
   var st = document.createElement('style');
-  st.textContent = '#loginView{display:none!important}';
+  st.textContent = '#loginView{display:none!important}' +
+    // "Fit" (দুই মাথায় তীর) বাটনের দরকার নেই; টপ বার অন্য অ্যাপের মতো সরু
+    'button[onclick="toggleFit()"]{display:none!important}' +
+    '.apphead{min-height:0!important;padding-top:5px!important;padding-bottom:5px!important}' +
+    '.apphead .hbtns{display:flex;align-items:center}' +
+    '@media (max-width:640px){.apphead .tag{display:none!important}}';
   document.head.appendChild(st);
 
   var _load = window.loadData;
