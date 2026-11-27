@@ -67,6 +67,24 @@
       </div>
       <input type="file" id="fLogo" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="hidden" />
     </div>
+
+    <div class="card pad" style="max-width:860px;margin-top:14px">
+      <h2 class="h2" data-i="Company library — pads, seals, signatures, logos|কোম্পানির লাইব্রেরি — প্যাড, সিল, সিগনেচার, লোগো"></h2>
+      <p class="small" style="font-size:13.5px;line-height:1.6" data-i="Upload once, use in every app: in an app's settings, next to a seal / signature / logo / pad link box press 📚 and pick. No Google Drive links needed. Use PNG with a transparent background for seals and signatures.|একবার আপলোড করুন, সব অ্যাপে ব্যবহার করুন: অ্যাপের সেটিংসে সিল / সিগনেচার / লোগো / প্যাডের লিংকের ঘরের পাশে 📚 চেপে বেছে নিন। Google Drive লিংক লাগবে না। সিল ও সিগনেচারের জন্য স্বচ্ছ ব্যাকগ্রাউন্ডের PNG দিন।"></p>
+      <div class="toolbar" style="margin:6px 0 10px;flex-wrap:wrap;gap:6px">
+        <select class="in-f" id="baKind" style="width:auto">
+          <option value="pad" data-i="Pad (letterhead)|প্যাড (লেটারহেড)"></option>
+          <option value="seal" data-i="Seal|সিল"></option>
+          <option value="signature" data-i="Signature|সিগনেচার"></option>
+          <option value="logo" data-i="Logo|লোগো"></option>
+          <option value="other" data-i="Other|অন্যান্য"></option>
+        </select>
+        <input class="in-f" id="baTitle" style="width:auto;min-width:200px" data-iph="Title (e.g. MD signature)|নাম (যেমন MD এর সিগনেচার)" />
+        <button class="btn p" type="button" id="baAdd">⬆ <span data-i="Upload|আপলোড"></span></button>
+        <input type="file" id="baFile" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="hidden" />
+      </div>
+      <div id="baList" class="docs"><div class="small">…</div></div>
+    </div>
   </section>
 
   <!-- SMS -->
@@ -228,7 +246,7 @@
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
   var T = SCS.t, esc = SCS.esc, sb = SCS.sb;
-  var SCHEMA_NEED = 12;
+  var SCHEMA_NEED = 13;
   var st = { status: 'all', q: '', profiles: [], access: [], apps: [], pins: {}, me: null, keep: {}, flash: '' };
   var tt = null;
   function toast(t) { var e = $('toast'); e.textContent = t; e.classList.remove('hidden'); clearTimeout(tt); tt = setTimeout(function () { e.classList.add('hidden'); }, 3200); }
@@ -660,6 +678,50 @@
   });
 
   /* ---------- logo ---------- */
+  /* ---------- কোম্পানির লাইব্রেরি (প্যাড, সিল, সিগনেচার, লোগো) ---------- */
+  var BAK = { pad: T('Pad', 'প্যাড'), seal: T('Seal', 'সিল'), signature: T('Signature', 'সিগনেচার'), logo: T('Logo', 'লোগো'), other: T('Other', 'অন্যান্য') };
+  $('baTitle').placeholder = T('Title (e.g. MD signature)', 'নাম (যেমন MD এর সিগনেচার)');
+  function loadLib() {
+    SCS.q(sb.from('brand_assets').select('*').order('kind').order('sort_order').order('created_at')).then(function (rows) {
+      $('baList').innerHTML = (rows || []).map(function (a) {
+        return '<div class="doc"><div class="th" style="background:#fff url(\'' + esc(a.url) + '\') center/contain no-repeat;border:1px solid var(--line)"></div>' +
+          '<b>' + esc(a.title || BAK[a.kind]) + '</b><div class="small">' + esc(BAK[a.kind] || a.kind) + '</div>' +
+          '<div style="display:flex;gap:8px"><a class="link" href="' + esc(a.url) + '" target="_blank" rel="noopener" style="font-size:12px">' + T('Open', 'খুলুন') + '</a>' +
+          '<button type="button" class="link" data-bacopy="' + esc(a.url) + '" style="font-size:12px">' + T('Copy link', 'লিংক কপি') + '</button></div>' +
+          '<button type="button" class="x" data-badel="' + esc(a.id) + '" data-bapath="' + esc(a.path) + '" title="' + T('Remove', 'মুছুন') + '">✕</button></div>';
+      }).join('') || '<div class="small">' + T('Nothing uploaded yet.', 'এখনো কিছু আপলোড করা হয়নি।') + '</div>';
+    }).catch(function (e) { $('baList').innerHTML = '<div class="small">' + esc(SCS.err(e)) + '</div>'; });
+  }
+  $('baAdd').onclick = function () { $('baFile').click(); };
+  $('baFile').onchange = function () {
+    var f = this.files[0]; this.value = ''; if (!f) return;
+    var kind = $('baKind').value, title = $('baTitle').value.trim() || BAK[kind];
+    if (f.size > 8 * 1024 * 1024) { toast(T('File is larger than 8 MB', 'ফাইল ৮ MB এর বেশি')); return; }
+    var ext = (f.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
+    toast(T('Uploading…', 'আপলোড হচ্ছে…'));
+    // সিল/সিগনেচার/লোগো যেমন আছে তেমন (স্বচ্ছতা থাকে); প্যাড বড় হলে ছোট করা
+    var prep = kind === 'pad' && /jpe?g|png|webp/.test(f.type) && f.size > 1500000 ? SCS.resizeImage(f, 2400, 0.88).then(function (b) { ext = 'jpg'; return b; }) : Promise.resolve(f);
+    prep.then(function (b) {
+      var path = 'brand/' + kind + '/' + Date.now() + '.' + ext;
+      return SCS.uploadPublic(path, b, b.type || f.type).then(function (url) {
+        return SCS.q(sb.from('brand_assets').insert({ kind: kind, title: title, url: url, path: path, mime: b.type || f.type, created_by: st.me.id }));
+      });
+    }).then(function () { $('baTitle').value = ''; toast(T('Added to the library', 'লাইব্রেরিতে যোগ হয়েছে')); loadLib(); })
+      .catch(function (e) { toast(SCS.err(e)); });
+  };
+  $('baList').addEventListener('click', function (e) {
+    var c = e.target.closest('[data-bacopy]');
+    if (c) { var u = c.getAttribute('data-bacopy'); (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(function () { toast(T('Link copied', 'লিংক কপি হয়েছে')); }, function () { prompt('Copy:', u); }); return; }
+    var d = e.target.closest('[data-badel]'); if (!d) return;
+    SCS.confirmBox(T('Remove from the library?', 'লাইব্রেরি থেকে সরাবেন?'), T('Apps that already use this image will no longer show it.', 'যেসব অ্যাপ এই ছবি ব্যবহার করছে সেখানে আর দেখাবে না।'), T('Remove', 'সরান'), true).then(function (ok) {
+      if (!ok) return;
+      SCS.q(sb.from('brand_assets').delete().eq('id', d.getAttribute('data-badel')))
+        .then(function () { return SCS.q(sb.storage.from('scs-public').remove([d.getAttribute('data-bapath')])).catch(function () {}); })
+        .then(function () { toast(T('Removed', 'সরানো হয়েছে')); loadLib(); }).catch(function (er) { toast(SCS.err(er)); });
+    });
+  });
+  SCS.loadMe().then(function (me) { if (me && me.isSuper) loadLib(); });
+
   $('pickLogo').onclick = function () { $('fLogo').click(); };
   $('fLogo').onchange = function () {
     var f = this.files[0]; this.value = ''; if (!f) return;

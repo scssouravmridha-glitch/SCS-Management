@@ -868,20 +868,60 @@
     });
   };
 
+  /** শর্ত মিলে যাওয়া বাটন (যেমন হেডারের Sync) লুকিয়ে গিয়ার মেনুতে — অ্যাপের বাটন selector না জানলেও */
+  SCS.absorbMatch = function (test, icon, label) {
+    function find() { return [].filter.call(document.querySelectorAll('header button, header a'), function (b) { return !b.closest('[data-scs-gear]') && !b.classList.contains('scs-gear') && test(b); }); }
+    function hideNow() { find().forEach(function (b) { if (b.style.getPropertyValue('display') !== 'none') b.style.setProperty('display', 'none', 'important'); b.__scsAbs = 1; }); }
+    var mo = new MutationObserver(function () { clearTimeout(mo._t); mo._t = setTimeout(hideNow, 40); });
+    function start() { hideNow(); mo.observe(document.body, { childList: true, subtree: true }); }
+    if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+    SCS.gearExtras = SCS.gearExtras || [];
+    SCS.gearExtras.push({ icon: icon, label: label, show: function () { return find().length > 0; }, run: function () { var b = find()[0]; if (b) b.click(); } });
+  };
+  /* রিয়েল-টাইম থাকায় হেডারের Sync বাটন দরকার নেই -> গিয়ার মেনুতে "Refresh data" */
+  function syncToGear() {
+    if (syncToGear.on) return; syncToGear.on = true;
+    SCS.absorbMatch(function (b) {
+      var s = ((b.getAttribute('title') || '') + ' ' + (b.getAttribute('onclick') || '') + ' ' + (b.getAttribute('data-act') || '') + ' ' + (b.getAttribute('data-a') || '') + ' ' + (b.id || '') + ' ' + (b.textContent || '')).trim();
+      return /(^|\W)(sync|syncnow|syncall|triggersync|hsync)|সিঙ্ক/i.test(s);
+    }, '🔄', function () { return SCS.lang === 'bn' ? 'ডাটা রিফ্রেশ (সিঙ্ক)' : 'Refresh data (sync)'; });
+  }
+
   /* ---------------- মেনু বার: মোবাইলে সোয়াইপ + রিলোডে আগের ট্যাব ---------------- */
   function navWatch(appKey) {
     var KEY = 'scs_tab_' + appKey, restored = false, t = null;
     var mobile = window.matchMedia ? window.matchMedia('(max-width: 640px)') : { matches: false };
     function items(el) { return [].slice.call(el.children).filter(function (c) { return /^(BUTTON|A)$/.test(c.tagName) && c.offsetWidth; }); }
+    // পপআপ/মোডাল (fixed) বা কিপ্যাডের ভেতরের বাটন মেনু নয়
+    function inOverlay(el) {
+      for (var x = el; x && x !== document.body; x = x.parentElement) {
+        var ps = getComputedStyle(x).position;
+        if (ps === 'fixed' || x.getAttribute('role') === 'dialog' || x.getAttribute('aria-modal') === 'true') return true;
+      }
+      return false;
+    }
+    function looksLikeKeypad(k) {
+      var short = k.filter(function (c) { return (c.textContent || '').trim().length <= 2; }).length;
+      return short >= Math.ceil(k.length / 2);
+    }
+    var known = [];
     function navs() {
-      var hdr = document.querySelector('header.scs-hdr');
+      // আগে পাওয়া মেনু এখনো পেজে থাকলে আবার খোঁজার দরকার নেই (দ্রুত)
+      known = known.filter(function (el) { return document.body.contains(el) && items(el).length >= 3; });
+      if (known.length) return known;
+      var hdr = document.querySelector('header.scs-hdr') || document.querySelector('header');
       var hb = hdr ? hdr.getBoundingClientRect().bottom : 0;
-      return [].slice.call(document.querySelectorAll('nav, div')).filter(function (el) {
-        if (el.closest('header') || el.closest('.scs-ui') || el.closest('[role="dialog"]')) return false;
-        var k = items(el); if (k.length < 3) return false;
+      var seen = [], out = [];
+      [].forEach.call(document.querySelectorAll('button,a'), function (b) { var p = b.parentElement; if (p && seen.indexOf(p) < 0) seen.push(p); });
+      seen.forEach(function (el) {
+        if (out.length >= 2 || el.closest('header') || el.closest('.scs-ui')) return;
+        var k = items(el); if (k.length < 3 || looksLikeKeypad(k)) return;
         var r = el.getBoundingClientRect();
-        return r.top >= hb - 4 && r.top < hb + 260 && !el.querySelector('input,select,textarea');
-      }).slice(0, 2);
+        if (r.top < hb - 4 || r.top >= hb + 220 || el.querySelector('input,select,textarea') || inOverlay(el)) return;
+        out.push(el);
+      });
+      known = out;
+      return out;
     }
     function label(b) { return (b.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40); }
     function run() {
@@ -913,13 +953,103 @@
     }
     if (navWatch.on) return; navWatch.on = true;
     injectCss();
-    var mo = new MutationObserver(function () { clearTimeout(t); t = setTimeout(run, 120); });
+    // হালকা: পেজ বদলালে সর্বোচ্চ প্রতি ৬০০ms এ একবার (টাইপ করার সময় ধীর হয় না)
+    var last = 0;
+    function schedule() {
+      clearTimeout(t);
+      var wait = Math.max(250, 600 - (Date.now() - last));
+      t = setTimeout(function () { last = Date.now(); run(); }, wait);
+    }
+    var mo = new MutationObserver(schedule);
     mo.observe(document.body, { childList: true, subtree: true });
-    window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(run, 150); });
+    window.addEventListener('resize', schedule);
     setTimeout(run, 400);
   }
 
-  SCS._navWatch = navWatch;   // লোকাল টেস্ট মোডের জন্য
+  /* ---------------- কোম্পানির লাইব্রেরি পিকার (📚): অ্যাপের সেটিংসে সিল/সিগনেচার/লোগো/প্যাড ---------------- */
+  var LIB_RE = /(seal|signature|sign\b|sig\b|signat|logo|letter\s*head|\bpad\b|সিল|স্বাক্ষর|সিগনেচার|লোগো|প্যাড)/i;
+  function libKind(s) {
+    s = String(s || '');
+    if (/seal|সিল/i.test(s)) return 'seal';
+    if (/sign|sig\b|স্বাক্ষর|সিগনেচার/i.test(s)) return 'signature';
+    if (/logo|লোগো/i.test(s)) return 'logo';
+    if (/pad|letter\s*head|প্যাড/i.test(s)) return 'pad';
+    return '';
+  }
+  function fieldText(el) {
+    var lab = el.id ? document.querySelector('label[for="' + el.id + '"]') : null;
+    var s = [el.placeholder, el.getAttribute('aria-label'), el.name, el.id, lab && lab.textContent, el.closest('label') && el.closest('label').textContent].join(' ');
+    var p = el.parentElement;
+    for (var i = 0; i < 2 && p; i++, p = p.parentElement) { var tx = (p.textContent || '').trim(); if (tx.length < 160) s += ' ' + tx; }
+    return s;
+  }
+  function setVal(el, v) {
+    var d = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), 'value');
+    if (d && d.set) d.set.call(el, v); else el.value = v;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  SCS.pickAsset = function (kind) {
+    injectCss();
+    return SCS.q(sb.from('brand_assets').select('*').order('kind').order('sort_order').order('created_at')).then(function (rows) {
+      return new Promise(function (resolve) {
+        var w = document.createElement('div'); w.className = 'scs-ui scs-cfm';
+        var list = (rows || []).filter(function (a) { return !kind || a.kind === kind; });
+        if (!list.length) list = rows || [];
+        w.innerHTML = '<div class="bx" style="max-width:520px;text-align:left"><b>📚 ' + T('Company library', 'কোম্পানির লাইব্রেরি') + '</b>' +
+          (list.length ? '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:56vh;overflow:auto;margin:10px 0">' + list.map(function (a, i) {
+            return '<button type="button" data-pick="' + i + '" style="border:1px solid #e2e8f0;border-radius:12px;background:#fff;padding:6px;cursor:pointer;text-align:center">' +
+              '<div style="height:70px;background:url(\'' + SCS.esc(a.url) + '\') center/contain no-repeat"></div><div style="font-size:11.5px;font-weight:700;margin-top:4px;color:#0f172a">' + SCS.esc(a.title) + '</div></button>';
+          }).join('') + '</div>' : '<p>' + T('The library is empty. Upload in SCS Management → Admin Console → Branding.', 'লাইব্রেরি খালি। SCS Management → Admin Console → Branding এ আপলোড করুন।') + '</p>') +
+          '<div class="bt"><button type="button" data-no>' + T('Cancel', 'বাতিল') + '</button></div></div>';
+        w.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-pick]');
+          if (b) { w.remove(); resolve(list[+b.getAttribute('data-pick')]); return; }
+          if (e.target === w || e.target.closest('[data-no]')) { w.remove(); resolve(null); }
+        });
+        document.body.appendChild(w);
+      });
+    });
+  };
+  function libWatch() {
+    if (libWatch.on) return; libWatch.on = true;
+    function scan() {
+      [].forEach.call(document.querySelectorAll('input:not([data-scs-lib])'), function (el) {
+        var type = (el.type || 'text').toLowerCase();
+        if (type !== 'text' && type !== 'url' && !(type === 'file' && /image/.test(el.accept || 'image'))) return;
+        if (el.closest('.scs-ui') || !el.offsetParent && type !== 'file') return;
+        var txt = fieldText(el);
+        if (type !== 'file' && /folder|ফোল্ডার/i.test((el.placeholder || '') + ' ' + (el.value || '') + ' ' + (el.id || ''))) return;   // ফোল্ডারের লিংক ছবি নয়
+        if (!LIB_RE.test(txt) && !(type !== 'file' && /drive\.google|drive link|ড্রাইভ/i.test(txt) && /image|ছবি|url|link|লিংক/i.test(txt))) return;
+        el.setAttribute('data-scs-lib', '1');
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'scs-ui'; b.textContent = '📚';
+        b.title = T('Pick from the company library', 'কোম্পানির লাইব্রেরি থেকে বাছুন');
+        b.style.cssText = 'margin-left:4px;padding:4px 8px;border-radius:9px;border:1px solid #fbcfe8;background:#fdf2f8;cursor:pointer;font-size:14px;line-height:1;vertical-align:middle';
+        var anchor = type === 'file' ? (el.closest('label') || el) : el;
+        if (type === 'file' && getComputedStyle(anchor).display === 'none') anchor = anchor.parentElement || anchor;
+        anchor.insertAdjacentElement('afterend', b);
+        b.onclick = function (e) {
+          e.preventDefault(); e.stopPropagation();
+          SCS.pickAsset(libKind(txt)).then(function (a) {
+            if (!a) return;
+            if (type !== 'file') { setVal(el, a.url); return; }
+            // ফাইল চাওয়া ঘর: লাইব্রেরির ছবিটাই ফাইল হিসেবে বসানো
+            fetch(a.url).then(function (r) { return r.blob(); }).then(function (bl) {
+              var f = new File([bl], (a.title || 'image').replace(/[^\w.-]+/g, '_') + '.' + ((bl.type.split('/')[1] || 'png').replace('jpeg', 'jpg')), { type: bl.type || 'image/png' });
+              var dt = new DataTransfer(); dt.items.add(f); el.files = dt.files;
+              el.dispatchEvent(new Event('change', { bubbles: true }));
+            }).catch(function (er) { alert(SCS.err(er)); });
+          });
+        };
+      });
+    }
+    var t = null;
+    new MutationObserver(function () { clearTimeout(t); t = setTimeout(scan, 700); }).observe(document.body, { childList: true, subtree: true });
+    setTimeout(scan, 1000);
+  }
+
+  SCS._navWatch = function (k) { navWatch(k); syncToGear(); libWatch(); };   // লোকাল টেস্ট মোডের জন্য
 
   /* ---------------- app boot ---------------- */
   /**
@@ -950,6 +1080,8 @@
         readyResolve(me);
         mountInHeader(appKey, role, opts);
         try { navWatch(appKey); } catch (e) {}
+        try { syncToGear(); } catch (e) {}
+        if (role === 'admin') { try { libWatch(); } catch (e) {} }   // লাইব্রেরি পিকার: অ্যাপের Admin দের সেটিংসে
         SCS.startNotifications();
         sb.auth.onAuthStateChange(function (ev) { if (ev === 'SIGNED_OUT') location.href = SCS.url('/'); });
         var chain = Promise.resolve();

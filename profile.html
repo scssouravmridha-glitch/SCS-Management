@@ -77,7 +77,9 @@
           '<div class="field"><label class="l">' + T('Employee ID', 'এমপ্লয়ি আইডি') + '</label><input class="in-f" id="pEmp" readonly value="' + esc(p.employee_id || '') + '" placeholder="' + T('Set by the admin', 'অ্যাডমিন দেবেন') + '" />' +
             '<div class="small" style="margin-top:4px">' + T('Only the Super Admin can set or change the Employee ID.', 'Employee ID শুধু Super Admin দিতে বা বদলাতে পারেন।') + '</div></div>' +
         '</div>' +
-        ((p.designation || p.department) ? '<div class="row2"><div class="field"><label class="l">' + T('Designation', 'পদবি') + '</label><input class="in-f" readonly value="' + esc(p.designation) + '" /></div><div class="field"><label class="l">' + T('Department', 'বিভাগ') + '</label><input class="in-f" readonly value="' + esc(p.department) + '" /></div></div>' : '') +
+        // পদবি ও বিভাগ দেখা যায়, বদলান শুধু Super Admin
+        '<div class="row2"><div class="field"><label class="l">' + T('Designation', 'পদবি') + '</label><input class="in-f" readonly value="' + esc(p.designation || '') + '" placeholder="' + T('Set by the admin', 'অ্যাডমিন দেবেন') + '" /></div>' +
+        '<div class="field"><label class="l">' + T('Department', 'বিভাগ') + '</label><input class="in-f" readonly value="' + esc(p.department || '') + '" placeholder="' + T('Set by the admin', 'অ্যাডমিন দেবেন') + '" /></div></div>' +
         '<p class="small" style="margin:0 0 14px">' + T('Your name and photo are shown in Employee Attendance and all other SCS apps.', 'এই নাম ও ছবিই Employee Attendance সহ সব SCS অ্যাপে দেখাবে।') + '</p>' +
         '<button type="button" class="btn p" id="save">' + T('Save profile', 'প্রোফাইল সেভ করুন') + '</button>' +
       '</div>' +

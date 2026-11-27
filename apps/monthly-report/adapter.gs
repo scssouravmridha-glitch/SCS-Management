@@ -45,3 +45,18 @@ getIntegrationConfig = function () {
   c.tabName = 'SCS Order';   // Chemical Order অ্যাপের অর্ডার শিটের নাম
   return c;
 };
+
+/* জাতীয় সংগীত: অন্য গান/লিংক/ফাইল সেট করা না থাকলে এটাই বাজে (ফাইল: assets ফোল্ডারে) */
+function scsAnthemUrl_() {
+  var base = ScriptApp.getService().getUrl().replace(/apps\/[^/]+\/?$/, '');
+  return base + 'assets/Aamr%20sonar%20bangla%20ami%20tomay%20valobasi%20bangladesh%20er%20jatiyo%20sangit.mp3';
+}
+var __scsGetAppSettings = getAppSettings;
+getAppSettings = function () {
+  var out = __scsGetAppSettings.apply(this, arguments);
+  try {
+    var s = readSettings_();
+    if (out && !out.selected_song_id && !out.music_custom_url && !s.music_file_id) out.music_custom_url = scsAnthemUrl_();
+  } catch (e) {}
+  return out;
+};

@@ -26,3 +26,15 @@ getData = function (ctx) {
   if (SCS_GAS.isAdmin()) { try { ensureAutoBackup_(); } catch (e) {} }   // Apps Script এ doGet এ হতো
   return __scsWGetData.apply(this, arguments);
 };
+
+/* জাতীয় সংগীত: অন্য গান/লিংক/ফাইল সেট করা না থাকলে এটাই বাজে (ফাইল: assets ফোল্ডারে) */
+function scsAnthemUrl_() {
+  var base = ScriptApp.getService().getUrl().replace(/apps\/[^/]+\/?$/, '');
+  return base + 'assets/Aamr%20sonar%20bangla%20ami%20tomay%20valobasi%20bangladesh%20er%20jatiyo%20sangit.mp3';
+}
+var __scsGetUiConfig = getUiConfig;
+getUiConfig = function () {
+  var r = __scsGetUiConfig.apply(this, arguments);
+  try { if (r && r.success && !r.musicUrl && !r.musicFile) r.musicUrl = scsAnthemUrl_(); } catch (e) {}
+  return r;
+};
