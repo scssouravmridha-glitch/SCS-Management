@@ -1,0 +1,14 @@
+[
+  { "find": "var scsAdminOk_=function(pin){pin=String(pin==null?\"\":pin);if(window.__scsAdminHash)return scsSha256_(\"scs|\"+pin)===window.__scsAdminHash;return pin===\"2026\"};",
+    "replace": "var scsUserOk_=function(v){return !!window.SCS_ROLE&&String(v==null?\"\":v).length>=4};var scsAdminOk_=function(pin){return !!(window.SCS_CHECK_ADMIN_PIN&&window.SCS_CHECK_ADMIN_PIN(pin))};" },
+  { "find": "return pin.length===L2||pin===`2019`&&role!==`admin`", "replace": "return pin.length===L2||scsUserOk_(pin)&&role!==`admin`" },
+  { "find": "me2=e3=>e3===`2019`?(n2(true)", "replace": "me2=e3=>scsUserOk_(e3)?(n2(true)" },
+  { "find": "U=e3=>e3===`2019`?", "replace": "U=e3=>scsUserOk_(e3)?" },
+  { "find": ":e3===`2019`?ve2&&!ge2?", "replace": ":scsUserOk_(e3)?ve2&&!ge2?" },
+  { "find": "if(!adminOnly&&v2===`2019`)", "replace": "if(!adminOnly&&scsUserOk_(v2))" },
+  { "find": "if(v2===`2019`){if(ctx.verifyUserPin(v2))setOk(true);return}", "replace": "if(scsUserOk_(v2)&&!(window.SCS_ROLE===`admin`&&scsAdminOk_(v2))){if(ctx.verifyUserPin(v2))setOk(true);return}" },
+  { "find": "setPin(v2);if(v2===`2019`)check(v2)", "replace": "setPin(v2);if(window.SCS_ROLE!==`admin`&&scsUserOk_(v2))check(v2)" },
+  { "find": "if(pin===`2019`)return!ctx.isSelectedMonthPrevious", "replace": "if(scsUserOk_(pin))return!ctx.isSelectedMonthPrevious" },
+  { "find": "let[t2,n2]=(0,_.useState)(()=>localStorage.getItem(ae)===`true`)", "replace": "let[t2,n2]=(0,_.useState)(()=>!!window.SCS_ROLE)" },
+  { "find": "he2=()=>{n2(false),", "replace": "he2=()=>{window.SCS&&SCS.signOut(),n2(false)," }
+]
