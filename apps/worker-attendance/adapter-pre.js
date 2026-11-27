@@ -10,3 +10,8 @@
   SCS.absorbButton('header [data-act="gear"]', '👷',
     function () { return SCS.lang === 'bn' ? 'লেবার অ্যাপের সেটিংস ও লগ' : 'Worker app settings & log'; });
 })();
+/* জাতীয় সংগীত এখন SCS Management এর হোম পেজ থেকে বাজে (সব অ্যাপে চলতে থাকে) — এই অ্যাপের নিজের গানের বাটন লুকানো */
+(function () {
+  if (!window.SCS || !SCS.hideMatch) return;
+  SCS.hideMatch(function (b) { return /^play\b|^pause\b|music|গান|সংগীত/i.test((b.getAttribute('title') || '') + ' ' + (b.getAttribute('data-act') || '')); });
+})();

@@ -397,7 +397,64 @@
     $('topAct').innerHTML = '';
     if (!me) { $('topAct').innerHTML = langSwitch(); return; }
     SCS.portalHeader(me, $('topAct'));
+    if (me.active) $('topAct').insertBefore(musicBtn(), $('topAct').firstChild);
   }
+
+  /* ---------- 🎵 জাতীয় সংগীত: হোম পেজ থেকে বাজে; বাজার সময় অ্যাপ খুললে হোমের ভেতরেই খোলে, তাই থামে না ---------- */
+  var ANTHEM = 'assets/Aamr%20sonar%20bangla%20ami%20tomay%20valobasi%20bangladesh%20er%20jatiyo%20sangit.mp3';
+  var audio = new Audio(); audio.preload = 'none'; audio.src = ANTHEM;
+  function playing() { return !audio.paused && !audio.ended; }
+  function paintMusic() {
+    document.querySelectorAll('[data-music]').forEach(function (b) {
+      b.classList.toggle('on', playing());
+      b.title = playing() ? T('Stop the national anthem', 'জাতীয় সংগীত বন্ধ করুন') : T('Play the national anthem', 'জাতীয় সংগীত বাজান');
+      b.innerHTML = playing() ? '⏸' : '🎵';
+    });
+    var mini = $('shellMini'); if (mini) mini.classList.toggle('hidden', !playing());
+  }
+  function toggleMusic() {
+    if (playing()) { audio.pause(); audio.currentTime = 0; }
+    else audio.play().catch(function (e) { toast(SCS.err(e)); });
+  }
+  ['play', 'pause', 'ended'].forEach(function (ev) { audio.addEventListener(ev, paintMusic); });
+  function musicBtn() {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'scs-ui scs-gear'; b.setAttribute('data-music', '1');
+    b.style.fontSize = '17px'; b.onclick = toggleMusic;
+    setTimeout(paintMusic, 0);
+    return b;
+  }
+  // অ্যাপ খোলা: গান বাজলে হোমের ভেতরে পুরো স্ক্রিনে (গান চলতে থাকে), না বাজলে সাধারণভাবে
+  function openShell(url) {
+    var sh = $('appShell');
+    if (!sh) {
+      sh = document.createElement('div'); sh.id = 'appShell';
+      sh.innerHTML = '<iframe id="shellFrame" title="app" allow="camera; microphone; geolocation; clipboard-write; fullscreen"></iframe>' +
+        '<button type="button" id="shellMini" class="hidden" title="' + T('Stop the national anthem', 'জাতীয় সংগীত বন্ধ করুন') + '">🎵 ⏸</button>';
+      document.body.appendChild(sh);
+      $('shellMini').onclick = function () { audio.pause(); audio.currentTime = 0; };
+      var css = document.createElement('style');
+      css.textContent = '#appShell{position:fixed;inset:0;z-index:2147483000;background:var(--bg)}#appShell iframe{border:0;width:100%;height:100%;display:block}' +
+        '#shellMini{position:fixed;left:12px;bottom:14px;z-index:2147483001;border:0;border-radius:99px;padding:9px 14px;font-weight:800;background:#e91e63;color:#fff;box-shadow:0 10px 26px rgba(233,30,99,.45);cursor:pointer;animation:scsPulse 2s ease-in-out infinite}' +
+        '@keyframes scsPulse{50%{box-shadow:0 10px 34px rgba(233,30,99,.75)}}';
+      document.head.appendChild(css);
+    }
+    $('shellFrame').src = url;
+    sh.classList.remove('hidden'); document.documentElement.style.overflow = 'hidden';
+    paintMusic();
+    history.pushState({ shell: url }, '', location.pathname + location.search + '#app');
+  }
+  function closeShell() {
+    var sh = $('appShell'); if (!sh || sh.classList.contains('hidden')) return;
+    sh.classList.add('hidden'); $('shellFrame').src = 'about:blank'; document.documentElement.style.overflow = '';
+  }
+  window.SCS_SHELL = { close: function () { if (location.hash === '#app') history.back(); else closeShell(); }, playing: playing };
+  window.addEventListener('popstate', function () { if (location.hash !== '#app') closeShell(); });
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('#appGrid a.app'); if (!a || !playing() || a.target === '_blank') return;
+    var href = a.getAttribute('href'); if (!href || href === '#') return;
+    e.preventDefault(); openShell(a.href);
+  });
 
   /* ---------- home ---------- */
   function renderHome(me) {

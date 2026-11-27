@@ -940,7 +940,16 @@ var DriveApp = {
     if (!r.is_folder) throw gasError('Not a folder: ' + id);
     return new GFolder(r);
   },
-  getFileById: function (id) { var r = STORE.fileGet(String(id || '')); if (!r || r.is_folder) throw gasError('No item with the given ID could be found, or you do not have permission to access it.'); return new GFile(r); },
+  getFileById: function (id) {
+    id = String(id || '').trim();
+    // লিংক (যেমন SCS কোম্পানির লাইব্রেরি) দিলে: সেই লিংক থেকেই ফাইল
+    if (/^https?:\/\//i.test(id)) return new UrlFile(id);
+    var r = STORE.fileGet(id);
+    if (r && !r.is_folder) return new GFile(r);
+    // পুরনো Google Drive ফাইল আইডি (Apps Script থেকে আনা সেটিং): "লিংক থাকলে যে কেউ দেখতে পারবে" হলে Drive থেকে আনা
+    if (/^[A-Za-z0-9_-]{20,}$/.test(id)) { var f = new UrlFile('https://drive.google.com/uc?export=download&id=' + id, id); if (f.ok()) return f; }
+    throw gasError('No item with the given ID could be found, or you do not have permission to access it.');
+  },
   getFoldersByName: function (n) { return Iter(STORE.fileList({ folder: true, name: String(n) }), function (r) { return new GFolder(r); }); },
   getFilesByName: function (n) { return Iter(STORE.fileList({ folder: false, name: String(n) }), function (r) { return new GFile(r); }); },
   getFiles: function () { return Iter(STORE.fileList({ folder: false }), function (r) { return new GFile(r); }); },
@@ -953,6 +962,42 @@ var DriveApp = {
 };
 
 /* ------------------------------------------------------------------ UrlFetchApp / MailApp (সার্ভার ফাংশন scs-api দিয়ে) */
+/* লিংক থেকে পড়া ফাইল (শুধু পড়া যায়): DriveApp.getFileById(<লিংক>) */
+var URL_FILE_CACHE = {};
+function UrlFile(url, id) { this._u = url; this._id = id || url; }
+UrlFile.prototype = {
+  _blob: function () {
+    if (URL_FILE_CACHE[this._u]) return URL_FILE_CACHE[this._u];
+    // আগে সরাসরি (নিজের Supabase Storage / এই সাইট — দ্রুত), না হলে সার্ভারের মাধ্যমে
+    try {
+      var x = new XMLHttpRequest();
+      x.open('GET', this._u, false); x.responseType = 'arraybuffer'; x.send();
+      if (x.status >= 200 && x.status < 300 && !/text\/html/i.test(x.getResponseHeader('content-type') || '')) {
+        var db = new Blob_(new Uint8Array(x.response), x.getResponseHeader('content-type') || 'application/octet-stream', this.getName());
+        return (URL_FILE_CACHE[this._u] = db);
+      }
+    } catch (e) {}
+    var r = UrlFetchApp.fetch(this._u, { muteHttpExceptions: true });
+    var ct = String((r.getHeaders && r.getHeaders()['content-type']) || '');
+    if (r.getResponseCode() >= 400 || /text\/html/i.test(ct)) throw gasError('Could not load the file from the link (' + r.getResponseCode() + '). If it is a Google Drive file, share it as "Anyone with the link".');
+    var b = r.getBlob(); b.setName && b.setName(this.getName());
+    return (URL_FILE_CACHE[this._u] = b);
+  },
+  ok: function () { try { this._blob(); return true; } catch (e) { return false; } },
+  getBlob: function () { return this._blob(); },
+  getAs: function () { return this._blob(); },
+  getId: function () { return this._id; },
+  getName: function () { return decodeURIComponent((this._u.split('?')[0].split('/').pop() || 'file')); },
+  getMimeType: function () { return this._blob().getContentType(); },
+  getSize: function () { return this._blob().getBytes().length; },
+  getUrl: function () { return this._u; },
+  getDownloadUrl: function () { return this._u; },
+  isTrashed: function () { return false; },
+  setTrashed: function () { return this; },
+  setSharing: function () { return this; },
+  getDateCreated: function () { return new Date(); },
+  getLastUpdated: function () { return new Date(); }
+};
 function HTTPResponse(r) { this._r = r; }
 HTTPResponse.prototype = {
   getResponseCode: function () { return this._r.code; },

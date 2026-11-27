@@ -204,6 +204,22 @@
     return me.access[appKey] || null;
   };
 
+  /** হোম পেজের ভেতরে (জাতীয় সংগীত বাজার সময়) খোলা অ্যাপ হলে হোমের নিয়ন্ত্রণ, না হলে null */
+  SCS.shell = function () { try { return window.top !== window && window.top.SCS_SHELL ? window.top.SCS_SHELL : null; } catch (e) { return null; } };
+  // হোমের ভেতরে খোলা অ্যাপ: হোমের লিংকে ক্লিক -> অ্যাপ বন্ধ করে হোমে (হোমের ভেতরে আরেকটা হোম খোলে না)
+  document.addEventListener('click', function (e) {
+    var sh = SCS.shell(); if (!sh) return;
+    var a = e.target.closest && e.target.closest('a[href]'); if (!a) return;
+    var u = new URL(a.href, location.href), home = new URL(SCS.url('/'), location.href);
+    if (u.origin === home.origin && (u.pathname === home.pathname || u.pathname === home.pathname + 'index.html')) { e.preventDefault(); sh.close(); }
+  }, true);
+  /** শর্ত মিলে যাওয়া হেডারের বাটন সবসময় লুকানো (অ্যাপের CSS টপকেও) */
+  SCS.hideMatch = function (test) {
+    function run() { [].forEach.call(document.querySelectorAll('header button, header a'), function (b) { if (test(b) && b.style.getPropertyValue('display') !== 'none') b.style.setProperty('display', 'none', 'important'); }); }
+    var mo = new MutationObserver(function () { clearTimeout(mo._t); mo._t = setTimeout(run, 40); });
+    function start() { run(); mo.observe(document.body, { childList: true, subtree: true }); }
+    if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+  };
   /** ছোট নিশ্চিতকরণ পপআপ -> Promise<boolean> */
   SCS.confirmBox = function (title, text, okLabel, danger) {
     injectCss();
@@ -234,8 +250,9 @@
     } catch (e) {}
     var p = Promise.resolve();
     try { if (SCS.push && SCS.push.forget) p = SCS.push.forget(); } catch (e) {}
+    var win = SCS.shell() ? window.top : window;   // হোমের ভেতরে খোলা অ্যাপ থেকে লগআউট -> পুরো পেজ
     return p.catch(function () {}).then(function () { return sb ? sb.auth.signOut() : null; })
-      .then(function () { location.href = SCS.url('/'); }, function () { location.href = SCS.url('/'); });
+      .then(function () { win.location.href = SCS.url('/'); }, function () { win.location.href = SCS.url('/'); });
   };
   SCS.backToPortal = function () { location.href = SCS.url('/'); };
 
@@ -737,6 +754,8 @@
     a.setAttribute('data-scs-home', '1');
     a.title = T('SCS Management home — switch apps', 'SCS Management হোম — অন্য অ্যাপে যান');
     a.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/></svg>';
+    // হোম পেজের ভেতরে খোলা থাকলে (গান বাজার সময়): হোম বাটন = অ্যাপ বন্ধ করে হোমে ফেরা (গান চলতে থাকে)
+    a.addEventListener('click', function (e) { var sh = SCS.shell(); if (sh) { e.preventDefault(); sh.close(); } });
     return a;
   };
 
