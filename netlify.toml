@@ -1,0 +1,59 @@
+# SCS Management — Netlify configuration
+# কোনো build লাগে না: পুরো ফোল্ডারটাই ওয়েবসাইট।
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+# Supabase URL আর anon key ইচ্ছে করেই assets/config.js এ পাবলিক থাকে (ব্রাউজারের এগুলো লাগে,
+# আসল সুরক্ষা ডাটাবেসের RLS নিয়মে)। তাই Netlify-র secret scanner যেন এ দুটোকে "লিক" না ধরে।
+# SUPABASE_SERVICE_ROLE_KEY এখনো স্ক্যান হবে — ওটা কোনো ফাইলে পাওয়া গেলে ডিপ্লয় আটকাবে (এটাই চাই)।
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL,SUPABASE_ANON_KEY"
+
+[functions]
+  node_bundler = "esbuild"
+
+# অ্যাপের নতুন কোড ডিপ্লয় হলে ব্রাউজার যেন পুরনো ফাইল না ধরে রাখে
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/apps/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(self), camera=(), microphone=()"
+
+# supabase ফোল্ডার ওয়েবে দেখানোর দরকার নেই
+[[redirects]]
+  from = "/supabase/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+# সার্ভারের কোড ও SMS/Email সেটিং (netlify/lib/server-config.mjs) ওয়েবে কেউ খুলতে পারবে না
+[[redirects]]
+  from = "/netlify/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+# পুরনো Apps Script সোর্স (শুধু রেফারেন্স)
+[[redirects]]
+  from = "/apps/scs-leave-application/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/google-drive-backup/*"
+  to = "/404.html"
+  status = 404
+  force = true
