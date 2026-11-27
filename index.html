@@ -412,7 +412,8 @@
       (nAdmin ? '<span>🔐 ' + T('Admin in ', 'অ্যাডমিন: ') + nAdmin + '</span>' : '') +
       (me.profile.employee_id ? '<span>🪪 ' + esc(me.profile.employee_id) + '</span>' : '') +
       (me.isSuper ? '<span>★ Super Admin</span>' : '');
-    var apps = me.apps.slice().sort(function (a, b) { return (SCS.roleFor(me, b.key) ? 1 : 0) - (SCS.roleFor(me, a.key) ? 1 : 0); });
+    // যার যে অ্যাপের অনুমতি আছে শুধু সেগুলোই দেখায় (ক্রম = Admin Console এ সাজানো ক্রম)
+    var apps = me.apps.filter(function (a) { return SCS.roleFor(me, a.key); });
     $('appGrid').innerHTML = apps.map(function (a) {
       var role = SCS.roleFor(me, a.key);
       var nm = SCS.lang === 'bn' && a.name_bn ? a.name_bn : a.name;
@@ -421,7 +422,7 @@
         '<div class="ic">' + esc(a.icon || '📦') + '</div>' +
         '<div><h3>' + esc(nm) + '</h3><p>' + esc(a.description || '') + '</p></div>' +
         '<div class="ft">' + (role ? '<span class="badge ' + role + '">' + role + '</span><span class="go">→</span>' : '<span class="badge">🔒 ' + T('No access', 'অ্যাক্সেস নেই') + '</span>') + '</div></a>';
-    }).join('') || '<div class="empty">' + T('No apps yet.', 'কোনো অ্যাপ নেই।') + '</div>';
+    }).join('') || '<div class="empty">' + T('No app access yet. Ask the admin to give you access.', 'এখনো কোনো অ্যাপের অনুমতি নেই। অ্যাডমিনের কাছে অনুমতি চান।') + '</div>';
   }
 
   /* ---------- router ---------- */
@@ -441,7 +442,7 @@
         $('pendText').textContent = T('Your account has been disabled by the admin.', 'আপনার অ্যাকাউন্টটি অ্যাডমিন বন্ধ করে রেখেছেন।');
         $('pendWho').textContent = me.email; show('vPending'); return;
       }
-      if (!me.complete) { location.replace(SCS.url('/profile.html') + (next ? '?next=' + encodeURIComponent(next) : '')); return; }
+      if (!me.complete || me.profile.must_change_pw) { location.replace(SCS.url('/profile.html') + (next ? '?next=' + encodeURIComponent(next) : '')); return; }
       if (!me.active) {
         $('pendTitle').textContent = T('Waiting for approval', 'অনুমোদনের অপেক্ষায়');
         $('pendText').textContent = T('Your account is ready. When the admin approves it and gives app access, your apps will appear here.', 'আপনার অ্যাকাউন্ট তৈরি হয়েছে। অ্যাডমিন অনুমোদন দিয়ে অ্যাপের অ্যাক্সেস দিলে এখানে অ্যাপগুলো দেখতে পাবেন।');

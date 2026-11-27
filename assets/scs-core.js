@@ -938,7 +938,7 @@
     SCS.loadMe().then(function (me) {
       if (!me) { location.replace(SCS.url('/') + '?next=' + encodeURIComponent(location.pathname + location.search)); return; }
       if (me.profile.status === 'disabled') { notice(T('Account disabled', 'অ্যাকাউন্ট বন্ধ'), T('Your account has been disabled by the admin.', 'আপনার অ্যাকাউন্টটি অ্যাডমিন বন্ধ করে রেখেছেন।')); return; }
-      if (!me.complete) { location.replace(SCS.url('/profile.html') + '?next=' + encodeURIComponent(location.pathname + location.search)); return; }
+      if (!me.complete || me.profile.must_change_pw) { location.replace(SCS.url('/profile.html') + '?next=' + encodeURIComponent(location.pathname + location.search)); return; }
       if (!me.active) { notice(T('Waiting for approval', 'অনুমোদনের অপেক্ষায়'), T('Your account has not been approved yet. You can open the app after the admin approves it.', 'আপনার অ্যাকাউন্ট এখনো অ্যাডমিন অনুমোদন দেননি। অনুমোদনের পর অ্যাপে ঢুকতে পারবেন।')); return; }
       var role = SCS.roleFor(me, appKey);
       if (!role) { notice(T('No access', 'অ্যাক্সেস নেই'), T('Your account does not have access to this app. Ask the admin for access.', 'এই অ্যাপে কাজ করার অনুমতি আপনার অ্যাকাউন্টে নেই। অ্যাডমিনের কাছে অ্যাক্সেস চান।')); return; }

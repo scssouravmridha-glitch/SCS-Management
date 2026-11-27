@@ -211,7 +211,7 @@
   <!-- TOOLS -->
   <section id="tTools" class="hidden">
     <div class="grid">
-      <a class="card app" style="--c:#2563eb" href="migrate.html"><div class="ic">⇪</div><div><h3 data-i="Data migration|ডাটা মাইগ্রেশন"></h3><p data-i="Import old Google Sheet data (one time).|পুরনো Google Sheet এর ডাটা আনা (একবার)।"></p></div></a>
+      <a class="card app" style="--c:#2563eb" href="migrate.html"><div class="ic">⇪</div><div><h3 data-i="Data migration|ডাটা মাইগ্রেশন"></h3><p data-i="How to bring old data from each app (JSON backup → Restore).|প্রতিটা অ্যাপের পুরনো ডাটা আনার নিয়ম (JSON ব্যাকআপ → Restore)।"></p></div></a>
       <a class="card app" style="--c:#7c3aed" href="activity.html?app=core"><div class="ic">🕘</div><div><h3 data-i="Access log|অ্যাক্সেস লগ"></h3><p data-i="Who approved whom, app access, PIN, logo and SMS changes.|কে কাকে অনুমোদন দিল, অ্যাক্সেস, পিন, লোগো ও SMS পরিবর্তন।"></p></div></a>
       <a class="card app" style="--c:#059669" href="activity.html"><div class="ic">📜</div><div><h3 data-i="All activity|সব অ্যাক্টিভিটি"></h3><p data-i="Lifetime history of every app, with before → after.|সব অ্যাপের লাইফটাইম হিস্ট্রি, আগে → পরে।"></p></div></a>
     </div>
@@ -228,7 +228,7 @@
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
   var T = SCS.t, esc = SCS.esc, sb = SCS.sb;
-  var SCHEMA_NEED = 11;
+  var SCHEMA_NEED = 12;
   var st = { status: 'all', q: '', profiles: [], access: [], apps: [], pins: {}, me: null, keep: {}, flash: '' };
   var tt = null;
   function toast(t) { var e = $('toast'); e.textContent = t; e.classList.remove('hidden'); clearTimeout(tt); tt = setTimeout(function () { e.classList.add('hidden'); }, 3200); }
@@ -259,8 +259,9 @@
     return Promise.all([
       SCS.q(sb.from('profiles').select('*').order('created_at', { ascending: false })),
       SCS.q(sb.from('app_access').select('*')),
-      SCS.q(sb.from('apps').select('*').order('sort_order'))
-    ]).then(function (r) { st.profiles = r[0] || []; st.access = r[1] || []; st.apps = r[2] || []; st.loaded = true; render(); })
+      SCS.q(sb.from('apps').select('*').order('sort_order')),
+      SCS.q(sb.from('profile_change_requests').select('user_id').eq('status', 'pending')).catch(function () { return []; })
+    ]).then(function (r) { st.profiles = r[0] || []; st.access = r[1] || []; st.apps = r[2] || []; st.reqU = {}; (r[3] || []).forEach(function (x) { st.reqU[x.user_id] = 1; }); st.loaded = true; render(); })
       .catch(function (e) { showErr(SCS.err(e)); if (!st.loaded) $('list').innerHTML = '<div class="empty">' + esc(SCS.err(e)) + '</div>'; })
       .then(function () { $('uReload').disabled = false; });
   }
@@ -293,7 +294,9 @@
       (p.is_super_admin ? '<span class="badge admin">Super Admin</span> ' : '') +
       (p.status !== 'active' ? '<span class="badge ' + stB + '">' + esc(stLabel(p.status)) + '</span> ' : '') +
       (self ? '<span class="badge">' + T('you', 'আপনি') + '</span> ' : '') +
-      (p.employee_id ? '<span class="badge user">' + esc(p.employee_id) + '</span>' : '') +
+      (p.employee_id ? '<span class="badge user">' + esc(p.employee_id) + '</span> ' : '') +
+      (p.left_at ? '<span class="badge">' + T('Left', 'চলে গেছে') + ' ' + esc(SCS.fmt(p.left_at, 'd MMM yyyy')) + '</span> ' : '') +
+      (st.reqU && st.reqU[p.id] ? '<span class="badge warn">⏳ ' + T('change request', 'বদলের অনুরোধ') + '</span>' : '') +
       '<div class="small">' + esc(p.email || '') + (p.phone ? ' · ' + esc(p.phone) : '') + (p.designation ? ' · ' + esc(p.designation) : '') + '</div></div>' +
       '<div class="chips">' + chips + '</div><span class="go">›</span></div>';
   }
@@ -399,7 +402,15 @@
       '<div class="row2">' + fld('employee_id', T('Employee ID', 'এমপ্লয়ি আইডি'), T('any format, e.g. SCS-104', 'যেকোনো ফরম্যাট, যেমন SCS-104')) + fld('designation', T('Designation', 'পদবি')) + '</div>' +
       fld('department', T('Department', 'বিভাগ')) +
       '<label class="switch"><input type="checkbox" id="m_emp"' + (p.is_employee ? ' checked' : '') + ' /> ' + T('Show in Employee Attendance (is an employee)', 'Employee Attendance এ দেখাবে (কর্মচারী)') + '</label></div>' +
-      '<div class="mg-sec" style="margin-bottom:0"><div class="t">' + T('Documents', 'ডকুমেন্ট') + '</div><div id="eDocs" class="docs"><div class="small">…</div></div></div></div>' +
+      '<div class="mg-sec"><div class="t">' + T('Documents', 'ডকুমেন্ট') + '</div><div id="eDocs" class="docs"><div class="small">…</div></div></div>' +
+      '<div id="mgReq"></div>' +
+      '<div class="mg-sec"><div class="t">🔔 ' + T('Notifications this person gets', 'এই ব্যক্তি কোন নোটিফিকেশন পাবে') + '</div><div id="mgNf" class="small">…</div></div>' +
+      (self ? '' : '<div class="mg-sec" style="margin-bottom:0"><div class="t">' + T('Account actions', 'অ্যাকাউন্টের কাজ') + '</div>' +
+        '<div class="toolbar" style="margin:0;flex-wrap:wrap;gap:6px">' +
+          '<button type="button" class="btn g s" data-uact="temp">🔑 ' + T('Reset password (temporary)', 'পাসওয়ার্ড রিসেট (অস্থায়ী)') + '</button>' +
+          '<button type="button" class="btn g s" data-uact="email">✉️ ' + T('Change email', 'ইমেইল বদলান') + '</button>' +
+          '<button type="button" class="btn s" data-uact="delete" style="background:#fee2e2;color:#b91c1c;border-color:#fecaca">🗑 ' + T('Delete account…', 'অ্যাকাউন্ট ডিলিট…') + '</button>' +
+        '</div><div id="mgAct"></div></div>') + '</div>' +
       '<div class="mg-ft"><span class="note" id="mgNote"></span><button type="button" class="btn g" data-close>' + T('Cancel', 'বাতিল') + '</button><button type="button" class="btn p" id="mgSave"></button></div>', 'wide');
     paint();
 
@@ -462,6 +473,86 @@
       });
     };
 
+    /* ---- মোবাইল/ইমেইল বদলের অনুরোধ ---- */
+    function loadReqs() {
+      SCS.q(sb.from('profile_change_requests').select('*').eq('user_id', uid).eq('status', 'pending').order('created_at')).then(function (rs) {
+        if (!$('mgReq')) return;
+        $('mgReq').innerHTML = (rs || []).length ? '<div class="mg-sec" style="border:2px solid #fde68a;background:#fffbeb"><div class="t">⏳ ' + T('Change requests', 'বদলের অনুরোধ') + '</div>' +
+          rs.map(function (r) {
+            return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0"><span><b>' + (r.field === 'phone' ? T('Mobile', 'মোবাইল') : T('Email', 'ইমেইল')) + ':</b> ' + esc(r.old_value || '—') + ' → <b>' + esc(r.new_value) + '</b></span>' +
+              '<button type="button" class="btn p s" data-rq="' + r.id + '" data-rqok="1" data-rqf="' + r.field + '" data-rqv="' + esc(r.new_value) + '">✔ ' + T('Approve', 'অনুমোদন') + '</button>' +
+              '<button type="button" class="btn g s" data-rq="' + r.id + '">✕ ' + T('Reject', 'বাতিল') + '</button></div>';
+          }).join('') + '</div>' : '';
+      }).catch(function () {});
+    }
+    loadReqs();
+    /* ---- এই ব্যক্তির নোটিফিকেশন (অ্যাডমিন বন্ধ করতে পারেন) ---- */
+    Promise.all([SCS.q(sb.from('notif_rules').select('*').eq('enabled', true).order('sort_order')), SCS.q(sb.from('notif_prefs').select('*').eq('user_id', uid))]).then(function (r) {
+      var pref = {}; (r[1] || []).forEach(function (x) { pref[x.event_key] = x; });
+      if (!$('mgNf')) return;
+      $('mgNf').innerHTML = (r[0] || []).map(function (x) {
+        var pp = pref[x.event_key] || {};
+        return '<label class="switch" style="display:flex;margin:4px 0"><input type="checkbox" data-anf="' + esc(x.event_key) + '"' + (pp.admin_off ? '' : ' checked') + ' /> ' +
+          esc(SCS.lang === 'bn' && x.label_bn ? x.label_bn : x.label) + (pp.enabled === false ? ' <span class="small">(' + T('turned off by the person', 'ব্যক্তি নিজে বন্ধ করেছেন') + ')</span>' : '') + '</label>';
+      }).join('') || T('No notification rules.', 'কোনো নোটিফিকেশন নিয়ম নেই।');
+    }).catch(function (e) { if ($('mgNf')) $('mgNf').textContent = SCS.err(e); });
+
+    var mb = $('modalBody');
+    if (mb.__mgChange) mb.removeEventListener('change', mb.__mgChange);
+    if (mb.__mgClick) mb.removeEventListener('click', mb.__mgClick);   // আগের খোলা ইউজারের কাজ সরানো
+    mb.addEventListener('change', mb.__mgChange = function (e) {
+      var c = e.target.closest('[data-anf]'); if (!c) return;
+      SCS.q(sb.from('notif_prefs').upsert({ user_id: uid, event_key: c.getAttribute('data-anf'), admin_off: !c.checked }))
+        .then(function () { toast(c.checked ? T('Allowed', 'চালু করা হলো') : T('Turned off for this person', 'এই ব্যক্তির জন্য বন্ধ')); }, function (er) { c.checked = !c.checked; toast(SCS.err(er)); });
+    });
+    var api = function (op, extra) { return SCS.callFn('password-reset', Object.assign({ action: 'adminUser', op: op, userId: uid }, extra || {})); };
+    mb.addEventListener('click', mb.__mgClick = function (e) {
+      var rq = e.target.closest('[data-rq]');
+      if (rq) {
+        var ok = rq.hasAttribute('data-rqok'), id = Number(rq.getAttribute('data-rq'));
+        var step = ok && rq.getAttribute('data-rqf') === 'email' ? api('setEmail', { email: rq.getAttribute('data-rqv') }) : Promise.resolve();
+        rq.disabled = true;
+        step.then(function () { return SCS.q(sb.rpc('scs_decide_change', { p_id: id, p_approve: ok, p_note: '' })); })
+          .then(function () { toast(ok ? T('Approved — changed', 'অনুমোদন দেওয়া হলো — বদলেছে') : T('Rejected', 'বাতিল হলো')); loadReqs(); load(); })
+          .catch(function (er) { rq.disabled = false; toast(SCS.err(er)); });
+        return;
+      }
+      var ua = e.target.closest('[data-uact]'); if (!ua) return;
+      var act = ua.getAttribute('data-uact'), box = $('mgAct');
+      if (act === 'temp') {
+        SCS.confirmBox(T('Reset this password?', 'পাসওয়ার্ড রিসেট করবেন?'), T('A temporary password is created. Give it to the person; at the next login they must set their own new password.', 'একটা অস্থায়ী পাসওয়ার্ড তৈরি হবে। সেটা ব্যক্তিকে দিন; পরের লগইনে তাকে নিজের নতুন পাসওয়ার্ড দিতে হবে।'), T('Reset', 'রিসেট')).then(function (y) {
+          if (!y) return;
+          api('tempPassword').then(function (r) {
+            box.innerHTML = '<div class="msg ok" style="margin-top:10px">🔑 ' + T('Temporary password', 'অস্থায়ী পাসওয়ার্ড') + ': <code style="font-size:16px;font-weight:900;letter-spacing:1px;user-select:all">' + esc(r.password) + '</code><br>' +
+              '<span class="small">' + T('Login: ', 'লগইন: ') + esc(p.email || '') + (p.phone ? ' / ' + esc(p.phone) : '') + T(' — shown only once. They must change it after logging in.', ' — শুধু এখনই দেখা যাবে। লগইনের পর তাকে বদলাতে হবে।') + '</span></div>';
+          }).catch(function (er) { box.innerHTML = '<div class="msg bad" style="margin-top:10px">' + esc(SCS.err(er)) + '</div>'; });
+        });
+      }
+      if (act === 'email') {
+        var ne = prompt(T('New email for this account:', 'এই অ্যাকাউন্টের নতুন ইমেইল:'), p.email || '');
+        if (!ne || !ne.trim() || ne.trim().toLowerCase() === String(p.email || '').toLowerCase()) return;
+        api('setEmail', { email: ne.trim() }).then(function () { toast(T('Email changed', 'ইমেইল বদলেছে')); load(); closeModal(); }).catch(function (er) { toast(SCS.err(er)); });
+      }
+      if (act === 'delete') {
+        box.innerHTML = '<div style="margin-top:10px;padding:12px;border-radius:12px;background:#fef2f2;border:1px solid #fecaca">' +
+          '<label style="display:block;margin:4px 0"><input type="radio" name="delMode" value="left" checked> <b>' + T('Left the company — keep the history', 'চাকরি ছেড়েছে — আগের কাজের ইতিহাস থাকবে') + '</b><div class="small" style="margin-left:22px">' +
+            T('Login is blocked, app access removed, no longer listed as employee. Name, attendance, orders, logs and all past work stay.', 'লগইন বন্ধ, অ্যাপের অ্যাক্সেস বাদ, এমপ্লয়ি তালিকায় আর থাকবে না। নাম, হাজিরা, অর্ডার, লগসহ আগের সব কাজ থেকে যাবে।') + '</div></label>' +
+          '<label style="display:block;margin:8px 0 4px"><input type="radio" name="delMode" value="purge"> <b>' + T('Created by mistake — remove the account completely', 'ভুল করে খোলা — অ্যাকাউন্ট পুরো মুছে ফেলা') + '</b><div class="small" style="margin-left:22px">' +
+            T('The login, profile, photo, documents, access and notifications are deleted. Cannot be undone.', 'লগইন, প্রোফাইল, ছবি, ডকুমেন্ট, অ্যাক্সেস আর নোটিফিকেশন মুছে যাবে। আর ফেরানো যাবে না।') + '</div></label>' +
+          '<div class="field" style="margin-top:8px"><label class="l">' + T('Type the person\'s email to confirm', 'নিশ্চিত করতে ব্যক্তির ইমেইল লিখুন') + '</label><input class="in-f" id="delConf" autocomplete="off" /></div>' +
+          '<button type="button" class="btn" id="delGo" style="background:#dc2626;color:#fff">' + T('Delete', 'ডিলিট') + '</button></div>';
+        $('delGo').onclick = function () {
+          var mode = (document.querySelector('input[name=delMode]:checked') || {}).value;
+          if ($('delConf').value.trim().toLowerCase() !== String(p.email || '').toLowerCase()) { toast(T('The email does not match.', 'ইমেইল মেলেনি।')); return; }
+          var b = this; b.disabled = true;
+          var run = mode === 'purge' ? api('delete')
+            : SCS.q(sb.rpc('scs_user_left', { p_user: uid })).then(function () { return api('ban').catch(function () {}); });
+          run.then(function () { toast(mode === 'purge' ? T('Account deleted', 'অ্যাকাউন্ট মুছে ফেলা হয়েছে') : T('Marked as left — history kept', 'চলে গেছে হিসেবে বন্ধ — ইতিহাস রাখা হয়েছে')); closeModal(); load(); })
+            .catch(function (er) { b.disabled = false; toast(SCS.err(er)); });
+        };
+      }
+    });
+
     SCS.q(sb.from('profile_documents').select('*').eq('user_id', uid).order('created_at')).then(function (docs) {
       var K = { nid_front: 'NID front', nid_back: 'NID back', certificate: 'Certificate', other: 'Other' };
       if (!$('eDocs')) return;
@@ -515,8 +606,11 @@
       SCS.q(sb.from('app_pins').select('*'))
     ]).then(function (r) {
       st.apps = r[0]; st.pins = {}; r[1].forEach(function (x) { st.pins[x.app_key] = x.pin; });
-      $('appList').innerHTML = st.apps.map(function (a) {
-        return '<div class="row"><div class="av" style="border-radius:14px;background:' + esc(a.color || '#e91e63') + ';color:#fff;font-size:20px">' + esc(a.icon || '📦') + '</div>' +
+      $('appList').innerHTML = st.apps.map(function (a, i) {
+        return '<div class="row"><div style="display:flex;flex-direction:column;gap:2px">' +
+          '<button class="btn g s" data-appmove="' + i + '" data-dir="-1" title="' + T('Move up', 'উপরে') + '"' + (i ? '' : ' disabled') + ' style="padding:2px 8px">▲</button>' +
+          '<button class="btn g s" data-appmove="' + i + '" data-dir="1" title="' + T('Move down', 'নিচে') + '"' + (i < st.apps.length - 1 ? '' : ' disabled') + ' style="padding:2px 8px">▼</button></div>' +
+          '<div class="av" style="border-radius:14px;background:' + esc(a.color || '#e91e63') + ';color:#fff;font-size:20px">' + esc(a.icon || '📦') + '</div>' +
           '<div class="grow"><b>' + esc(a.name) + '</b> ' + (a.active ? '' : '<span class="badge bad">' + T('hidden', 'লুকানো') + '</span>') +
           '<div class="small">' + esc(a.key) + ' · ' + esc(a.path) + (a.description ? ' · ' + esc(a.description) : '') + '</div></div>' +
           '<div class="acc"><span class="small">🔐 PIN</span><input class="in-f" style="width:110px;padding:7px 10px" type="password" autocomplete="off" inputmode="numeric" maxlength="4" data-pin="' + esc(a.key) + '" value="' + esc(st.pins[a.key] || '') + '" />' +
@@ -550,6 +644,13 @@
   document.addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return;
     if (b.dataset.appedit) appForm(st.apps.filter(function (a) { return a.key === b.dataset.appedit; })[0]);
+    if (b.dataset.appmove !== undefined) {   // হোম পেজে অ্যাপের ক্রম (সবার জন্য)
+      var i = Number(b.dataset.appmove), j = i + Number(b.dataset.dir), keys = st.apps.map(function (a) { return a.key; });
+      if (j < 0 || j >= keys.length) return;
+      var tmp = keys[i]; keys[i] = keys[j]; keys[j] = tmp;
+      b.disabled = true;
+      SCS.q(sb.rpc('scs_apps_reorder', { p_keys: keys })).then(function () { toast(T('Order saved', 'ক্রম সেভ হয়েছে')); return loadApps(); }).catch(function (er) { toast(SCS.err(er)); b.disabled = false; });
+    }
     if (b.dataset.pinshow) { var i = document.querySelector('[data-pin="' + b.dataset.pinshow + '"]'); i.type = i.type === 'password' ? 'text' : 'password'; }
     if (b.dataset.pinsave) {
       var k = b.dataset.pinsave, v = document.querySelector('[data-pin="' + k + '"]').value.trim();
