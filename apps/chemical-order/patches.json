@@ -1,5 +1,0 @@
-[
-  { "in": "html", "find": "lang: LS.get('scs_lang') || 'bn'", "replace": "lang: LS.get('scs_lang') || 'en'" },
-  { "in": "html", "find": "setInterval(pollVer, 8000)", "replace": "setInterval(pollVer, 60000)" },
-  { "in": "html", "find": "var ses = sessionOk();", "replace": "/* SCS Management: অ্যাকাউন্ট দিয়ে লগইন, এডিট পিন নেই, অ্যাডমিন = Admin Console এর পিন */\nvar __scsAsk = askPin;\naskPin = function (kind) { if (kind !== 'admin') return Promise.resolve('scs-account'); if (S.adminPin) return Promise.resolve(S.adminPin); return __scsAsk.apply(this, arguments); };\nlogout = function () { if (window.SCS) SCS.signOut(); }; ACT.logout = logout;\nwindow.__scsChem = { S: S, go: function (role) { S.role = role === 'admin' ? 'admin' : 'user'; setSession(S.role); if (!S.entered) bootstrap(); else if ($('roleChip')) $('roleChip').textContent = S.role === 'admin' ? 'Admin' : 'User'; } };\nvar ses = null;" }
-]
