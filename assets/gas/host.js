@@ -96,6 +96,8 @@
       return;
     }
     if (m.type === 'committed') { H.lastCommit = Date.now(); return; }
+    if (m.type === 'chunks') { if (!test) saveChunks(m.items || []); return; }
+    if (m.type === 'chunksKeep') { if (!test) keepChunks(m.pre, m.keep || []); return; }
     if (m.type === 'dump') { var dp = pending['d' + m.id]; if (dp) { delete pending['d' + m.id]; dp.res(m); } return; }
     if (m.type === 'notify') { fireNotify(m); return; }
     if (m.type === 'result') {
@@ -121,13 +123,54 @@
 
   /* ---------------- চালু করা ---------------- */
   function getText(url) { return fetch(url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('Could not load ' + url + ' (' + r.status + ')'); return r.text(); }); }
+  /* ---------------- বড় শিটের টুকরো এই ডিভাইসে জমা (IndexedDB) ----------------
+   *  প্রথমবার যে টুকরো নামে সেটা এখানে থাকে; পরের বার অ্যাপ খুললে শুধু বদলানো টুকরোই নামে — তাই দ্রুত খোলে */
+  var CDB = null;
+  function cdb() {
+    if (CDB) return CDB;
+    CDB = new Promise(function (res) {
+      try {
+        var r = indexedDB.open('scs-chunks', 1);
+        r.onupgradeneeded = function () { r.result.createObjectStore('c'); };
+        r.onsuccess = function () { res(r.result); }; r.onerror = function () { res(null); };
+      } catch (e) { res(null); }
+    });
+    return CDB;
+  }
+  function eachKey(db, pre, fn) {
+    return new Promise(function (res) {
+      try {
+        var tx = db.transaction('c', fn.write ? 'readwrite' : 'readonly'), rq = tx.objectStore('c').openCursor(IDBKeyRange.bound(pre, pre + '￿'));
+        rq.onsuccess = function () { var c = rq.result; if (c) { fn(c); c.continue(); } else res(); };
+        rq.onerror = function () { res(); };
+      } catch (e) { res(); }
+    });
+  }
+  function seedChunks() {
+    return cdb().then(function (db) {
+      if (!db) return [];
+      var out = [];
+      return Promise.all([APP].concat(LINKED).map(function (a) { return eachKey(db, a + '|', function (c) { out.push({ k: c.key, d: c.value }); }); })).then(function () { return out; });
+    }).catch(function () { return []; });
+  }
+  function saveChunks(items) {
+    cdb().then(function (db) { if (!db) return; try { var st = db.transaction('c', 'readwrite').objectStore('c'); items.forEach(function (x) { st.put(x.d, x.k); }); } catch (e) {} });
+  }
+  function keepChunks(pre, keep) {
+    cdb().then(function (db) {
+      if (!db) return; var k = {}; keep.forEach(function (h) { k[pre + h] = 1; });
+      var del = function (c) { if (!k[c.key]) c.delete(); }; del.write = true;
+      eachKey(db, pre, del);
+    });
+  }
+
   function start(opts) {
     var codeUrl = opts.code || 'Code.gs';
-    Promise.all([getText(codeUrl), opts.serverAdapter ? getText(opts.serverAdapter) : Promise.resolve(H.serverAdapter || '')]).then(function (r) {
+    Promise.all([getText(codeUrl), opts.serverAdapter ? getText(opts.serverAdapter) : Promise.resolve(H.serverAdapter || ''), test ? Promise.resolve([]) : seedChunks()]).then(function (r) {
       worker = new Worker(BASE_DIR + 'runtime.js' + (VER ? '?v=' + VER : ''));
       worker.onmessage = onMsg;
       worker.onerror = function (e) { fatal = 'Engine error: ' + (e.message || e); onMsg({ data: { type: 'fatal', error: fatal } }); };
-      worker.postMessage({ type: 'init', cfg: opts.cfg, code: r[0], adapter: r[1], files: H.files, seed: opts.seed || null });
+      worker.postMessage({ type: 'init', cfg: opts.cfg, code: r[0], adapter: r[1], files: H.files, seed: opts.seed || null, chunks: r[2] });
     }).catch(function (e) { onMsg({ data: { type: 'fatal', error: e.message } }); });
   }
   H.start = start;

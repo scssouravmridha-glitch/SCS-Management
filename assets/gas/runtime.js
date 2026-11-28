@@ -130,6 +130,7 @@ function SupabaseStore() {
       var part = need.slice(i, i + 6);
       var got = rest('GET', '/rest/v1/gas_chunks?app_key=eq.' + encodeURIComponent(a) + '&name=eq.' + encodeURIComponent(name) + '&h=in.(' + part.join(',') + ')&select=h,data') || [];
       got.forEach(function (c) { CHUNK_CACHE[pre + c.h] = c.data || []; });
+      if (got.length) self.postMessage({ type: 'chunks', items: got.map(function (c) { return { k: pre + c.h, d: c.data || [] }; }) });
     }
     var known = CHUNK_KNOWN[a + '|' + name] = {}, out = [];
     hs.forEach(function (h) {
@@ -137,8 +138,9 @@ function SupabaseStore() {
       if (!d) throw gasError('Part of the sheet "' + name + '" is missing — please reload.');
       known[h] = true; for (var j = 0; j < d.length; j++) out.push(d[j]);
     });
-    // এই শিটের পুরনো টুকরো মেমরি থেকে সরানো
+    // এই শিটের পুরনো টুকরো মেমরি আর ডিভাইস থেকে সরানো
     Object.keys(CHUNK_CACHE).forEach(function (k) { if (k.indexOf(pre) === 0 && !known[k.slice(pre.length)]) delete CHUNK_CACHE[k]; });
+    self.postMessage({ type: 'chunksKeep', pre: pre, keep: hs });
     return out;
   }
   A.putChunk = function (a, name, h, body) {
@@ -347,10 +349,12 @@ function sheetPayload(app, n, s, known) {
   var p = { name: n, base: s.base, idx: s.idx, meta: s.meta };
   if (total <= CHUNK_FROM || !STORE.putChunk) { p.data = enc; return p; }
   var key = app + '|' + n, have = CHUNK_KNOWN[key] || {}, list = splitChunks(strs), now = {};
+  var fresh = [];
   list.forEach(function (c) {
-    if (!have[c.h]) STORE.putChunk(app, n, c.h, c.body);
+    if (!have[c.h]) { STORE.putChunk(app, n, c.h, c.body); fresh.push({ k: key + '|' + c.h, d: enc.slice(c.a, c.b) }); }
     now[c.h] = true; CHUNK_CACHE[key + '|' + c.h] = enc.slice(c.a, c.b);
   });
+  if (fresh.length) self.postMessage({ type: 'chunks', items: fresh });
   known[key] = now;
   p.chunks = list.map(function (c) { return c.h; });
   return p;
@@ -1322,6 +1326,7 @@ self.onmessage = function (ev) {
     CFG.tz = CFG.tz || 'Asia/Dhaka';
     STORE = CFG.store === 'memory' ? new MemoryStore(m.seed) : new SupabaseStore();
     HTML_FILES = m.files || {};
+    (m.chunks || []).forEach(function (x) { CHUNK_CACHE[x.k] = x.d; });   // এই ডিভাইসে আগে থেকে জমা টুকরো
     try {
       // উপরের লেভেলের const/let -> var (প্রতি কলে আবার চালানো যায়)
       SOURCE = (m.code + '\n;\n' + (m.adapter || '')).replace(/^(const|let)(\s)/gm, 'var$2') + '\n//# sourceURL=' + CFG.app + '-Code.gs';

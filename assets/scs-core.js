@@ -1212,6 +1212,75 @@
     SCS.startNotifications();
   };
 
+  /* ---------------- প্রিন্ট — সব অ্যাপে একটাই কমান্ড (Android অ্যাপের জন্য) ----------------
+   *  সাধারণ ব্রাউজারে কিছুই বদলায় না। Android অ্যাপের WebView এ "SCSAndroid" নামে JavascriptInterface থাকলে:
+   *   - window.print(), লুকানো ফ্রেমের print(), নতুন উইন্ডোর print() — সব এখানে আসে, পেজের পুরো HTML
+   *     SCSAndroid.print(html, title, baseUrl) এ যায় → Android এর নিজের প্রিন্ট ডায়ালগ খোলে
+   *   - PDF/Word ইত্যাদি ডাউনলোড (blob/data লিংক) → SCSAndroid.saveFile(base64, name, mime)
+   *  Android কোড: android-print-bridge.md দেখুন। */
+  (function () {
+    var BR = function () { return window.SCSAndroid || (window.top !== window && (function () { try { return window.top.SCSAndroid; } catch (e) { return null; } })()) || null; };
+    SCS.isAndroidApp = function () { return !!BR(); };
+    function blobToDataUrl(b) { return new Promise(function (res) { var r = new FileReader(); r.onload = function () { res(r.result); }; r.onerror = function () { res(''); }; r.readAsDataURL(b); }); }
+    /** blob: ছবি অন্য WebView এ খোলে না — data: এ বদলে দেওয়া; ক্যানভাস -> ছবি */
+    function portableHtml(doc) {
+      var root = doc.documentElement.cloneNode(true);
+      var live = doc.querySelectorAll('canvas'), cl = root.querySelectorAll('canvas');
+      for (var i = 0; i < cl.length; i++) { try { var im = doc.createElement('img'); im.src = live[i].toDataURL('image/png'); im.style.cssText = live[i].style.cssText; im.width = live[i].width; cl[i].parentNode.replaceChild(im, cl[i]); } catch (e) {} }
+      root.querySelectorAll('script').forEach(function (s) { s.remove(); });
+      var jobs = [].map.call(root.querySelectorAll('img[src^="blob:"]'), function (im) {
+        return fetch(im.getAttribute('src')).then(function (r) { return r.blob(); }).then(blobToDataUrl).then(function (d) { if (d) im.setAttribute('src', d); }).catch(function () {});
+      });
+      return Promise.all(jobs).then(function () { return '<!DOCTYPE html>' + root.outerHTML; });
+    }
+    SCS.print = function (win) {
+      win = win || window;
+      var br = BR(); if (!br) { win.__scsNativePrint ? win.__scsNativePrint() : win.print(); return; }
+      var d = win.document, title = d.title || document.title || 'SCS';
+      portableHtml(d).then(function (html) {
+        try { br.print(html, title, d.baseURI || location.href); } catch (e) { alert('Print failed: ' + e.message); }
+        try { win.dispatchEvent(new Event('afterprint')); if (typeof win.onafterprint === 'function') win.onafterprint(); } catch (e) {}
+      });
+    };
+    function hook(win) {
+      try {
+        if (!win || win.__scsPrintHooked) return;
+        win.__scsPrintHooked = true;
+        win.__scsNativePrint = win.print.bind(win);
+        win.print = function () { if (BR()) SCS.print(win); else win.__scsNativePrint(); };
+      } catch (e) {}
+    }
+    hook(window);
+    // লুকানো ফ্রেম দিয়ে প্রিন্ট (Quotation, Leave …)
+    try {
+      new MutationObserver(function (ms) {
+        if (!BR()) return;
+        ms.forEach(function (m) { [].forEach.call(m.addedNodes, function (n) {
+          if (n.tagName === 'IFRAME') { hook(n.contentWindow); n.addEventListener('load', function () { n.contentWindow.__scsPrintHooked = false; hook(n.contentWindow); }); }
+        }); });
+      }).observe(document.documentElement, { childList: true, subtree: true });
+    } catch (e) {}
+    // নতুন উইন্ডো খুলে প্রিন্ট (Chemical Order, Projects …): Android এ নতুন উইন্ডো হয় না, তাই লুকানো ফ্রেম দেওয়া হয়
+    var _open = window.open;
+    window.open = function (url) {
+      if (!BR() || (url && !/^(about:blank)?$/.test(String(url)))) return _open.apply(window, arguments);
+      var fr = document.createElement('iframe'); fr.style.cssText = 'position:fixed;left:-9999px;top:0;width:900px;height:1200px;border:0';
+      document.body.appendChild(fr); var w = fr.contentWindow; hook(w);
+      w.close = function () { setTimeout(function () { fr.remove(); }, 0); };
+      return w;
+    };
+    // ডাউনলোড (blob: / data: লিংক) -> Android এ ফাইল সেভ
+    document.addEventListener('click', function (e) {
+      var br = BR(); if (!br || !br.saveFile) return;
+      var a = e.target.closest && e.target.closest('a[download]'); if (!a) return;
+      var href = a.getAttribute('href') || ''; if (!/^(blob:|data:)/.test(href)) return;
+      e.preventDefault(); e.stopPropagation();
+      fetch(href).then(function (r) { return r.blob(); }).then(function (b) {
+        return blobToDataUrl(b).then(function (d) { br.saveFile(String(d).replace(/^data:[^,]*,/, ''), a.getAttribute('download') || 'file', b.type || 'application/octet-stream'); });
+      }).catch(function (er) { alert('Download failed: ' + er.message); });
+    }, true);
+  })();
+
   /* ---------------- অ্যাপ খোলার স্ক্রিন ----------------
    *  অ্যাপগুলোর নিজের পিন-লগইন স্ক্রিন বাদ দেওয়া হয়েছে (SCS অ্যাকাউন্টই লগইন)।
    *  অ্যাপ চালু হওয়ার সময়টুকু এই স্ক্রিন দেখায়; সমস্যা হলে কারণ আর "আবার চেষ্টা করুন"। */
