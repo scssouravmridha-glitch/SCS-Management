@@ -1,3 +1,0 @@
-[
-  { "in": "html", "rx": "<div id=\"loginView\" class=\"login-wrap\">.*?<div class=\"lfoot\">.*?</div></div>", "replace": "<div id=\"loginView\" class=\"hidden\"><input id=\"pinInput\" type=\"hidden\" /><div id=\"pinDots\"></div><div id=\"pinPad\"></div><button id=\"loginGo\" disabled hidden></button><div id=\"loginCard\"></div></div>" }
-]

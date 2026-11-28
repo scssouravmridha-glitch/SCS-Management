@@ -1,4 +1,0 @@
-[
-  { "find": "case 'logout': if (S.role)", "replace": "case 'logout': if (window.SCS && SCS.signOut) { SCS.signOut(); break; } if (S.role)" },
-  { "rx": "function loginView\\(\\) \\{.*?All Rights Reserved\\.</footer></div>';\\s*\\}", "replace": "/* SCS: পিন-লগইন স্ক্রিন বাদ (SCS অ্যাকাউন্টই লগইন) */\nfunction loginView() { return SCS.startHTML(); }" }
-]

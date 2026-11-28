@@ -1,4 +1,0 @@
-[
-  { "rx": "function renderLogin\\(\\)\\{.*?'</footer></div>';\\s*\\}", "replace": "/* SCS: পিন-লগইন স্ক্রিন বাদ (SCS অ্যাকাউন্টই লগইন) */\nfunction renderLogin(){ return SCS.startHTML(); }" },
-  { "find": "}, function(){ if(!S.boot) doLogout(true); });", "replace": "}, function(e){ if(!S.boot){ var r=document.getElementById('root'); if(r&&window.SCS) r.innerHTML=SCS.startHTML((e&&e.message)||String(e)); } });" }
-]
