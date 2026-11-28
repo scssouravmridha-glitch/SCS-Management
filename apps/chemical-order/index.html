@@ -7,9 +7,9 @@
 <link rel="icon" type="image/png" href="../../assets/icon-192.png" />
 <script src="../../assets/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="../../assets/scs-core.js?v=202611281026"></script>
-<script src="adapter-pre.js?v=202611281026"></script>
-<script src="../../assets/gas/host.js?v=202611281026" data-app="chemical-order" data-server="adapter.gs"></script>
+<script src="../../assets/scs-core.js?v=202611281315"></script>
+<script src="adapter-pre.js?v=202611281315"></script>
+<script src="../../assets/gas/host.js?v=202611281315" data-app="chemical-order" data-server="adapter.gs"></script>
 <!-- ============ আসল অ্যাপ (Apps Script Index.html) ============ -->
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
@@ -188,34 +188,7 @@ html.dark .dark\:bg-emerald-950\/60{background-color:#022c2299}html.dark .dark\:
 <div id="wrap" class="min-h-screen flex flex-col transition-colors duration-200 bg-slate-100 text-slate-800">
 
 <!-- ===================== LOGIN ===================== -->
-<section id="loginView" class="min-h-screen flex flex-col justify-between">
-  <header class="w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-xs px-4 sm:px-8 py-3.5 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <div class="w-9 h-9 rounded-xl bg-pink-600 text-white font-black text-sm flex items-center justify-center shadow-md shadow-pink-600/30">SCS</div>
-      <div class="flex flex-col">
-        <span class="font-extrabold text-slate-900 dark:text-slate-100 text-base sm:text-lg leading-tight tracking-tight" data-i="SCS Chemical Order|এসসিএস কেমিক্যাল অর্ডার"></span>
-        <span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Swarup Construction Solution</span>
-      </div>
-    </div>
-    <div class="flex items-center gap-3">
-      <span class="hidden sm:inline-block text-xs font-semibold text-pink-600 dark:text-pink-400 italic">"Honesty is our Business Capital"</span>
-      <button type="button" data-act="lang" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 active:scale-95 transition-all border border-slate-200 dark:border-slate-700 shadow-xs cursor-pointer"><span data-ic="globe" data-cls="w-4 h-4 text-pink-600 dark:text-pink-400"></span><span data-langlbl></span></button>
-    </div>
-  </header>
-  <div class="flex-1 flex flex-col items-center justify-center p-4">
-    <div id="loginCard" class="w-full max-w-sm rounded-3xl p-6 md:p-8 shadow-2xl border transition-all duration-300 bg-white/95 border-slate-200/80 backdrop-blur-xl">
-      <div class="flex flex-col items-center mb-6">
-        <div class="w-14 h-14 rounded-2xl bg-pink-100 dark:bg-pink-950/60 text-pink-600 dark:text-pink-400 flex items-center justify-center mb-3 shadow-inner"><span data-ic="lock" data-cls="w-7 h-7"></span></div>
-        <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100" data-i="Enter Security PIN|নিরাপদ পিন প্রবেশ করুন"></h2>
-        <p class="text-xs text-slate-400 mt-1 text-center" data-i="Enter your PIN (user 4 digits, admin 4–8 digits)|পিন দিন (ইউজার ৪ ডিজিট, অ্যাডমিন ৪–৮ ডিজিট)"></p>
-      </div>
-      <div id="loginPad"></div>
-      <button type="button" data-act="loginGo" id="loginBtn" disabled class="w-full py-3.5 px-4 rounded-2xl bg-pink-600 hover:bg-pink-700 active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none text-white font-semibold shadow-lg shadow-pink-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer"><span data-i="Authorize & Enter|লগইন করুন"></span><span data-ic="arrow" data-cls="w-4 h-4"></span></button>
-    </div>
-    <div class="mt-6 text-center text-xs text-slate-400 flex items-center gap-1.5"><span data-ic="shield" data-cls="w-4 h-4 text-emerald-500"></span><span>SCS Enterprise Chemical Order Engine</span></div>
-  </div>
-  <footer class="py-4 text-center text-xs text-slate-400 border-t border-slate-200 dark:border-slate-800">© 2026 Swarup Construction Solution (SCS). All Rights Reserved.</footer>
-</section>
+<section id="loginView"><div data-scs-start></div><div hidden><div id="loginCard"></div><div id="loginPad"></div><button type="button" id="loginBtn" disabled></button></div></section>
 
 <!-- ===================== APP ===================== -->
 <section id="appView" class="hidden min-h-screen flex flex-col">
@@ -1847,7 +1820,7 @@ if (navigator.contacts && navigator.contacts.select) $('contactBtn').classList.r
 paintIcons();
 loginPad = mountPad($('loginPad'), {
   card: $('loginCard'),
-  active: function () { return !$('loginView').classList.contains('hidden') && $('pinModal').classList.contains('hidden'); },
+  active: function () { return false; },
   auto: function () { return S.adminLen === 4 ? [4] : [4, S.adminLen]; },
   onChange: function (p) { $('loginBtn').disabled = p.length < 4; },
   onSubmit: function (pin, silent) { return doLogin(pin, silent); }
@@ -1865,5 +1838,5 @@ if (ses) { S.role = ses.role || 'user'; bootstrap(); }
 })();
 </script>
 <!-- ============ SCS Management: অ্যাপ-ভিত্তিক সমন্বয় ============ -->
-<script src="adapter.js?v=202611281026"></script></body>
+<script src="adapter.js?v=202611281315"></script></body>
 </html>

@@ -32,3 +32,20 @@ submitOrder = function (payload) {
   } catch (e) {}
   return r;
 };
+
+// অর্ডার এডিট / ডিলিট -> অ্যাপের Admin দের নোটিফিকেশন (নিয়ম: chemical-order.order_changed)
+['updateOrder', 'deleteOrder'].forEach(function (fn) {
+  var orig = self[fn];
+  if (typeof orig !== 'function') return;
+  self[fn] = function (a) {
+    var r = orig.apply(this, arguments);
+    try {
+      if (r && r.ok !== false) {
+        var u = SCS_GAS.user(), no = fn === 'deleteOrder' ? String(a || '') : String((a && (a.orderNo || a.order_no)) || '');
+        SCS_GAS.notify('order_changed', (fn === 'deleteOrder' ? 'Order deleted · ' : 'Order edited · ') + no,
+          (a && a.clientName ? a.clientName + ' · ' : '') + 'by ' + ((u && u.name) || 'someone'));
+      }
+    } catch (e) {}
+    return r;
+  };
+});

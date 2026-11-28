@@ -7,9 +7,9 @@
 <link rel="icon" type="image/png" href="../../assets/icon-192.png" />
 <script src="../../assets/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="../../assets/scs-core.js?v=202611281026"></script>
-<script src="adapter-pre.js?v=202611281026"></script>
-<script src="../../assets/gas/host.js?v=202611281026" data-app="quotation" data-server="adapter.gs"></script>
+<script src="../../assets/scs-core.js?v=202611281315"></script>
+<script src="adapter-pre.js?v=202611281315"></script>
+<script src="../../assets/gas/host.js?v=202611281315" data-app="quotation" data-server="adapter.gs"></script>
 <!-- ============ আসল অ্যাপ (Apps Script Index.html) ============ -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -472,19 +472,7 @@ body.fsmode #vBuilder{height:100vh!important;height:100dvh!important}
 </header>
 
 <!-- ============ LOGIN ============ -->
-<section id="login">
-  <div class="lcard">
-    <div class="lock"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="3"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
-    <h2 data-i="enterPin">Enter Security PIN</h2>
-    <p data-i="pinHint">Enter your PIN (user 4 digits, admin 4–8 digits)</p>
-    <div class="dots" id="dots"></div>
-    <div class="pad" id="padKeys"></div>
-    <button class="go" id="btnGo" disabled><span data-i="authorize">Authorize &amp; Enter</span><svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-    <div class="lerr" id="lerr"></div>
-  </div>
-  <div class="lfoot"><svg class="i" viewBox="0 0 24 24" style="color:#059669"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span data-i="loginFoot">SCS Enterprise Quotation Engine</span></div>
-  <div class="copy">© 2026 Swarup Construction Solution (SCS). All Rights Reserved.</div>
-</section>
+<section id="login"><div data-scs-start style="width:100%"></div><div hidden><div id="dots"></div><div id="padKeys"></div><button id="btnGo" disabled></button></div><div id="lerr" hidden></div></section>
 
 <!-- ============ APP ============ -->
 <main id="app" class="hide">
@@ -2474,7 +2462,7 @@ function doLogin() {
     });
   }).catch(function (e) {
     hideLoad(); if (S.autoTry) { S.autoTry = false; if (/invalid|wrong|pin/i.test(String(e && e.message))) clearSess(); }
-    S.pin = ''; drawDots(); $('lerr').textContent = e.message || t('wrongPin');
+    S.pin = ''; drawDots(); $('lerr').textContent = e.message || t('wrongPin'); if (window.SCS) SCS.startError(e.message || t('wrongPin'));
     var d = $('dots'); d.classList.remove('shake'); void d.offsetWidth; d.classList.add('shake');
   });
 }
@@ -9908,5 +9896,5 @@ window.SCSQ_VERSION = 'v7.0';
 })();
 </script>
 <!-- ============ SCS Management: অ্যাপ-ভিত্তিক সমন্বয় ============ -->
-<script src="adapter.js?v=202611281026"></script></body>
+<script src="adapter.js?v=202611281315"></script></body>
 </html>

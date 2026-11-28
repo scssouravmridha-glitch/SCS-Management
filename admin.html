@@ -153,72 +153,27 @@
 
   <!-- BACKUP -->
   <section id="tBackup" class="hidden">
-    <div class="card pad sec" style="max-width:760px">
-      <h2 class="h2" data-i="Full backup of all apps|সব অ্যাপের সম্পূর্ণ ব্যাকআপ"></h2>
-      <p class="small" style="margin-top:-4px" data-i="One JSON file with the lifetime data of every app (orders, attendance, monthly reports, employees, users, activity log, settings). New apps are included automatically. Photos and PDFs stay in Supabase Storage and are not inside the file.|একটা JSON ফাইলে সব অ্যাপের লাইফটাইম ডাটা (অর্ডার, হাজিরা, মাসিক রিপোর্ট, এমপ্লয়ি, ইউজার, অ্যাক্টিভিটি লগ, সেটিংস)। নতুন অ্যাপ যোগ হলে সেটাও নিজে থেকে আসে। ছবি ও PDF Supabase Storage এ থাকে, ফাইলের ভেতরে নয়।"></p>
-      <div class="toolbar" style="margin:0 0 8px;flex-wrap:wrap;gap:6px;align-items:center">
-        <select class="in-f" id="bkScope" style="width:auto;min-width:130px">
-          <option value="life" data-i="Lifetime (everything)|লাইফটাইম (সব)"></option>
-          <option value="year" data-i="One year|এক বছর"></option>
-          <option value="month" data-i="One month|এক মাস"></option>
-          <option value="range" data-i="Date to date|তারিখ থেকে তারিখ"></option>
-        </select>
-        <input class="in-f hidden" id="bkYear" type="number" min="2019" max="2100" style="width:96px" />
-        <input class="in-f hidden" id="bkMonth" type="month" style="width:auto" />
-        <input class="in-f hidden" id="bkFrom" type="date" style="width:auto" />
-        <input class="in-f hidden" id="bkTo" type="date" style="width:auto" />
-      </div>
-      <div class="toolbar" style="margin:0">
-        <button class="btn g" type="button" id="bkDownload">⬇ <span data-i="Download backup now|এখনই ব্যাকআপ ডাউনলোড"></span></button>
-        <button class="btn g" type="button" id="bkRestoreBtn">⬆ <span data-i="Restore from file|ফাইল থেকে রিস্টোর"></span></button>
-        <input type="file" id="bkFile" accept=".json,application/json" class="hidden" />
-      </div>
-      <div id="bkRestoreOut"></div>
-    </div>
+    <!-- সব অ্যাপ + সিস্টেম: ব্যাকআপ · রিস্টোর · রিসেট (assets/scs-backup.js — প্রতিটা অ্যাপের ভেতরেও একই প্যানেল) -->
+    <div class="card sec" style="max-width:860px;padding:0;overflow:hidden;background:#f5f5f7" id="bkPanel"><div class="spin" style="margin:30px auto"></div></div>
 
-    <div class="card pad sec" style="max-width:760px;border:2px solid #fecaca">
-      <h2 class="h2" style="color:#dc2626" data-i="⚠️ Reset — erase all app data|⚠️ রিসেট — সব অ্যাপের সব ডাটা মুছে ফেলা"></h2>
-      <p class="small" style="font-size:13.5px;line-height:1.7" data-i="Erases the data of every app (orders, attendance, reports, leave, expenses, requisitions, wages, collections, app settings, notifications). Accounts, app access, PINs and system settings stay. Before reset you must download a LIFETIME backup; then a code is emailed to you and you confirm several times.|সব অ্যাপের সব ডাটা (অর্ডার, হাজিরা, রিপোর্ট, ছুটি, খরচ, রিকুইজিশন, মজুরি, কালেকশন, অ্যাপের সেটিং, নোটিফিকেশন) মুছে যাবে। অ্যাকাউন্ট, অ্যাপের অ্যাক্সেস, পিন আর সিস্টেম সেটিং থাকবে। রিসেটের আগে লাইফটাইম ব্যাকআপ ডাউনলোড বাধ্যতামূলক; তারপর আপনার ইমেইলে কোড যাবে আর কয়েকবার নিশ্চিত করতে হবে।"></p>
-      <button class="btn" type="button" id="rsStart" style="background:#dc2626;color:#fff" data-i="Start reset…|রিসেট শুরু…"></button>
-      <div id="rsBox"></div>
-    </div>
-
-    <div class="card pad sec" style="max-width:760px">
-      <h2 class="h2" data-i="Automatic backup to Google Drive|Google Drive এ অটো ব্যাকআপ"></h2>
+    <div class="card pad sec" style="max-width:860px">
+      <h2 class="h2" data-i="Google Drive connection (for automatic backups)|Google Drive সংযোগ (অটো ব্যাকআপের জন্য)"></h2>
+      <p class="small" style="margin-top:-4px" data-i="Connect once. Then every app (and All apps above) can back up to this Drive folder automatically — each app in its own sub-folder. Big backups are sent in pieces, so size is no problem.|একবার যুক্ত করুন। তারপর প্রতিটা অ্যাপ (আর উপরের সব অ্যাপ) নিজে থেকে এই Drive ফোল্ডারে ব্যাকআপ রাখবে — প্রতিটা অ্যাপ আলাদা সাব-ফোল্ডারে। বড় ব্যাকআপ টুকরো করে যায়, তাই আকার কোনো সমস্যা নয়।"></p>
       <div id="bkMsg"></div>
       <div class="field"><label class="l" data-i="Google Drive folder link|Google Drive ফোল্ডারের লিংক"></label><input class="in-f" id="bkFolder" placeholder="https://drive.google.com/drive/folders/..." /></div>
       <div class="field"><label class="l" data-i="Apps Script Web App URL (see steps below)|Apps Script Web App URL (নিচের ধাপ দেখুন)"></label><input class="in-f" id="bkUrl" placeholder="https://script.google.com/macros/s/.../exec" /></div>
-      <div class="row2">
-        <div class="field"><label class="l" data-i="Backup every|কতক্ষণ পরপর"></label>
-          <select class="in-f" id="bkInterval">
-            <option value="off">Off / বন্ধ</option>
-            <option value="1m">Every minute / প্রতি মিনিটে</option>
-            <option value="5m">Every 5 minutes / ৫ মিনিটে</option>
-            <option value="15m">Every 15 minutes / ১৫ মিনিটে</option>
-            <option value="30m">Every 30 minutes / ৩০ মিনিটে</option>
-            <option value="1h">Every hour / প্রতি ঘণ্টায়</option>
-            <option value="6h">Every 6 hours / ৬ ঘণ্টায়</option>
-            <option value="12h">Every 12 hours / ১২ ঘণ্টায়</option>
-            <option value="1d">Every day, 3 AM / প্রতিদিন রাত ৩টা</option>
-            <option value="1w">Every week (Friday 3 AM) / সাপ্তাহিক</option>
-          </select></div>
-        <div class="field"><label class="l" data-i="Keep last N files on Drive (0 = keep all)|Drive এ শেষের কয়টা ফাইল রাখবে (0 = সব)"></label><input class="in-f" id="bkKeep" type="number" min="0" value="200" /></div>
-      </div>
-      <div class="field"><label class="l" data-i="Security token (paste into the Apps Script)|সিকিউরিটি টোকেন (Apps Script এ বসাবেন)"></label>
+      <div class="field"><label class="l" data-i="Security token (already inside the copied code)|সিকিউরিটি টোকেন (কপি করা কোডে আগেই বসানো)"></label>
         <div style="display:flex;gap:8px"><input class="in-f" id="bkToken" readonly /><button class="btn g s" type="button" id="bkCopyTok" data-i="Copy|কপি"></button><button class="btn g s" type="button" id="bkNewTok" data-i="New|নতুন"></button></div></div>
       <div class="toolbar" style="margin:0">
-        <button class="btn p" type="button" id="bkSave" data-i="Save & schedule|সেভ ও চালু করুন"></button>
-        <button class="btn g" type="button" id="bkNow" data-i="Send to Drive now|এখনই Drive এ পাঠান"></button>
-        <button class="btn g" type="button" id="bkRefresh" data-i="Refresh status|স্ট্যাটাস দেখুন"></button>
+        <button class="btn p" type="button" id="bkSave" data-i="Save connection|সংযোগ সেভ করুন"></button>
       </div>
-      <div id="bkStatus" style="margin-top:14px"></div>
-      <details style="margin-top:16px"><summary style="cursor:pointer;font-weight:800" data-i="One-time setup: Google Apps Script receiver|একবারের সেটআপ: Google Apps Script"></summary>
+      <details style="margin-top:16px" open><summary style="cursor:pointer;font-weight:800" data-i="One-time setup: Google Apps Script receiver|একবারের সেটআপ: Google Apps Script"></summary>
         <ol class="small" style="font-size:13px;line-height:1.75;padding-left:18px">
-          <li data-ih="Open <a href='https://script.google.com' target='_blank' rel='noopener'>script.google.com</a> → New project.|<a href='https://script.google.com' target='_blank' rel='noopener'>script.google.com</a> খুলে New project।"></li>
+          <li data-ih="Open <a href='https://script.google.com' target='_blank' rel='noopener'>script.google.com</a> → New project (or open your old receiver project).|<a href='https://script.google.com' target='_blank' rel='noopener'>script.google.com</a> খুলে New project (বা আগের receiver প্রজেক্টটা খুলুন)।"></li>
           <li data-ih="Copy the code below and paste it (replace everything). The token is already filled in.|নিচের কোড কপি করে পেস্ট করুন (আগের সব মুছে)। টোকেন আগেই বসানো আছে।"></li>
           <li data-ih="Choose the function <b>authorize</b> → Run → allow access.|ফাংশন <b>authorize</b> বেছে Run → অনুমতি দিন।"></li>
-          <li data-ih="Deploy → New deployment → Web app · Execute as: <b>Me</b> · Who has access: <b>Anyone</b> → Deploy → copy the Web app URL.|Deploy → New deployment → Web app · Execute as: <b>Me</b> · Who has access: <b>Anyone</b> → Deploy → Web app URL কপি করুন।"></li>
-          <li data-ih="Paste the URL above, paste the Drive folder link, choose the interval → Save &amp; schedule → Send to Drive now to test.|URL আর Drive ফোল্ডারের লিংক উপরে বসিয়ে সময় বেছে নিন → সেভ ও চালু করুন → এখনই Drive এ পাঠান দিয়ে টেস্ট করুন।"></li>
+          <li data-ih="Deploy → New deployment → Web app · Execute as: <b>Me</b> · Who has access: <b>Anyone</b> → Deploy → copy the Web app URL. (Old project: Deploy → Manage deployments → ✏️ → Version: New version → Deploy.)|Deploy → New deployment → Web app · Execute as: <b>Me</b> · Who has access: <b>Anyone</b> → Deploy → Web app URL কপি করুন। (আগের প্রজেক্ট হলে: Deploy → Manage deployments → ✏️ → Version: New version → Deploy।)"></li>
+          <li data-ih="Paste the URL and the Drive folder link above → Save connection. Then turn on auto backup above (All apps) or inside each app (⚙ → Backup · Restore · Reset).|URL আর Drive ফোল্ডারের লিংক উপরে বসিয়ে → সংযোগ সেভ করুন। তারপর উপরে (সব অ্যাপ) বা প্রতিটা অ্যাপের ভেতরে (⚙ → ব্যাকআপ · রিস্টোর · রিসেট) অটো ব্যাকআপ চালু করুন।"></li>
         </ol>
         <button class="btn g s" type="button" id="bkCopyCode" data-i="Copy Apps Script code|Apps Script কোড কপি করুন"></button>
         <pre id="bkCode" class="small" style="white-space:pre-wrap;max-height:260px;overflow:auto;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px"></pre>
@@ -246,7 +201,7 @@
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
   var T = SCS.t, esc = SCS.esc, sb = SCS.sb;
-  var SCHEMA_NEED = 14;
+  var SCHEMA_NEED = 15;
   var st = { status: 'all', q: '', profiles: [], access: [], apps: [], pins: {}, me: null, keep: {}, flash: '' };
   var tt = null;
   function toast(t) { var e = $('toast'); e.textContent = t; e.classList.remove('hidden'); clearTimeout(tt); tt = setTimeout(function () { e.classList.add('hidden'); }, 3200); }
@@ -907,217 +862,52 @@
     });
   }
 
-  /* ---------- backup ---------- */
-  var bk = { cfg: {} };
+  /* ---------- backup: সব অ্যাপের প্যানেল (assets/scs-backup.js) + Google Drive সংযোগ ---------- */
+  var bk = { cfg: {}, panel: null, code: '' };
   function randTok() { var a = new Uint8Array(18); crypto.getRandomValues(a); return Array.prototype.map.call(a, function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }
   function folderIdFrom(link) { var m = String(link || '').match(/folders\/([A-Za-z0-9_-]{10,})/) || String(link || '').match(/[?&]id=([A-Za-z0-9_-]{10,})/) || String(link || '').match(/^([A-Za-z0-9_-]{20,})$/); return m ? m[1] : ''; }
-  function scriptCode(tok) {
-    return [
-      '/** SCS Management — Google Drive backup receiver. Deploy as Web app (Execute as: Me, Who has access: Anyone). */',
-      "const TOKEN = '" + tok + "';",
-      '',
-      'function doPost(e) {',
-      '  try {',
-      '    const req = JSON.parse(e.postData.contents);',
-      "    if (!req.token || req.token !== TOKEN) return out_({ ok: false, error: 'Wrong token' });",
-      "    if (!req.folderId) return out_({ ok: false, error: 'Drive folder is missing' });",
-      '    const folder = DriveApp.getFolderById(req.folderId);',
-      "    const name = req.filename || ('SCS-backup-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json');",
-      "    const file = folder.createFile(Utilities.newBlob(JSON.stringify(req.data), 'application/json', name));",
-      '    const keep = Number(req.keep) || 0;',
-      '    if (keep > 0) {',
-      '      const list = []; const it = folder.getFiles();',
-      '      while (it.hasNext()) { const f = it.next(); if (/^SCS-backup-.*\\.json$/.test(f.getName())) list.push(f); }',
-      '      list.sort(function (a, b) { return b.getDateCreated() - a.getDateCreated(); });',
-      '      list.slice(keep).forEach(function (f) { f.setTrashed(true); });',
-      '    }',
-      '    return out_({ ok: true, id: file.getId(), name: name, size: file.getSize() });',
-      '  } catch (err) { return out_({ ok: false, error: String(err) }); }',
-      '}',
-      "function doGet() { return out_({ ok: true, service: 'SCS Management backup receiver' }); }",
-      "function authorize() { DriveApp.getRootFolder().getName(); Logger.log('Authorized'); }",
-      'function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }'
-    ].join('\n');
+  /** receiver এর কোড: google-drive-backup/Code.gs (টোকেন বসিয়ে) */
+  function scriptCode(tok) { return bk.code ? bk.code.replace("'PASTE-THE-TOKEN-FROM-ADMIN-CONSOLE'", "'" + tok + "'") : T('Loading…', 'লোড হচ্ছে…'); }
+  function loadCode() {
+    if (bk.code) return Promise.resolve();
+    return fetch(SCS.url('/google-drive-backup/Code.gs') + '?v=15', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('google-drive-backup/Code.gs ' + r.status); return r.text(); })
+      .then(function (t) { bk.code = t; }).catch(function (e) { bk.code = '// ' + T('Could not load the receiver code: upload the google-drive-backup folder to the site. ', 'receiver কোড আনা গেল না: সাইটে google-drive-backup ফোল্ডারটা আপলোড করুন। ') + SCS.err(e); });
   }
   function bkMsg(t, type) { $('bkMsg').innerHTML = t ? '<div class="msg ' + (type || 'info') + '">' + esc(t) + '</div>' : ''; }
   function loadBackup() {
+    if (!bk.panel) {
+      SCS.openBackup && SCS.loadScript(SCS.url('/assets/scs-backup.js?v=' + (SCS.BACKUP_V || '15'))).then(function () {
+        $('bkPanel').innerHTML = ''; bk.panel = window.SCSBackup.mount($('bkPanel'), '*');
+      }).catch(function (e) { $('bkPanel').innerHTML = '<div class="msg bad" style="margin:14px">' + esc(SCS.err(e)) + '</div>'; });
+    } else bk.panel.reload();
     SCS.q(sb.from('sys_settings').select('value').eq('key', 'backup').maybeSingle()).then(function (r) {
       bk.cfg = (r && r.value) || {};
       if (!bk.cfg.token) bk.cfg.token = randTok();
       $('bkFolder').value = bk.cfg.folderUrl || ''; $('bkUrl').value = bk.cfg.scriptUrl || '';
-      $('bkInterval').value = bk.cfg.interval || 'off'; $('bkKeep').value = bk.cfg.keep != null ? bk.cfg.keep : 200;
-      $('bkToken').value = bk.cfg.token; $('bkCode').textContent = scriptCode(bk.cfg.token);
-      loadBkStatus();
+      $('bkToken').value = bk.cfg.token;
+      return loadCode().then(function () { $('bkCode').textContent = scriptCode(bk.cfg.token); });
     }).catch(function (e) { bkMsg(SCS.err(e), 'bad'); });
   }
-  function loadBkStatus() {
-    $('bkStatus').innerHTML = '<div class="small">…</div>';
-    SCS.q(sb.rpc('scs_backup_status')).then(function (s) {
-      var job = s.job ? (s.job.error ? '⚠️ ' + s.job.error : '⏱ ' + T('Auto backup ON', 'অটো ব্যাকআপ চালু') + ' (' + s.job.schedule + ')') : T('Auto backup is OFF', 'অটো ব্যাকআপ বন্ধ');
-      var rows = (s.runs || []).map(function (r) {
-        var ok = r.error ? '❌ ' + r.error : r.status_code ? ((r.status_code < 400) ? '✅ ' + r.status_code : '❌ ' + r.status_code) + (r.response && /"ok":false/.test(r.response) ? ' — ' + r.response : '') : r.timed_out ? '⏳ timeout (Drive may still save it)' : r.error_msg ? '❌ ' + r.error_msg : '⏳ sending…';
-        return '<tr><td>' + esc(SCS.fmt(r.at, 'd MMM, HH:mm:ss')) + '</td><td>' + esc(r.filename || '') + (r.manual ? ' <span class="badge">manual</span>' : '') + '</td><td>' + esc(ok) + '</td></tr>';
-      }).join('');
-      $('bkStatus').innerHTML = '<div class="small" style="margin-bottom:6px"><b>' + esc(job) + '</b></div>' +
-        (rows ? '<table class="diff" style="margin:0"><tr><th>' + T('Time', 'সময়') + '</th><th>' + T('File', 'ফাইল') + '</th><th>' + T('Result', 'ফলাফল') + '</th></tr>' + rows + '</table>' : '<div class="small">' + T('No backups sent yet.', 'এখনো কোনো ব্যাকআপ পাঠানো হয়নি।') + '</div>');
-    }).catch(function (e) { $('bkStatus').innerHTML = '<div class="msg bad">' + esc(SCS.err(e)) + '</div>'; });
-  }
   $('bkNewTok').onclick = function () {
-    if (bk.cfg.scriptUrl && !confirm(T('A new token means you must paste it into the Apps Script again. Continue?', 'নতুন টোকেন দিলে Apps Script এও আবার বসাতে হবে। চালিয়ে যাবেন?'))) return;
+    if (bk.cfg.scriptUrl && !confirm(T('A new token means you must paste the new code into the Apps Script again. Continue?', 'নতুন টোকেন দিলে Apps Script এ নতুন কোড আবার বসাতে হবে। চালিয়ে যাবেন?'))) return;
     bk.cfg.token = randTok(); $('bkToken').value = bk.cfg.token; $('bkCode').textContent = scriptCode(bk.cfg.token);
   };
   function copy(text) { (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { toast(T('Copied', 'কপি হয়েছে')); }, function () { prompt('Copy:', text); }); }
   $('bkCopyTok').onclick = function () { copy($('bkToken').value); };
   $('bkCopyCode').onclick = function () { copy($('bkCode').textContent); };
   $('bkSave').onclick = function () {
-    var folderUrl = $('bkFolder').value.trim(), url = $('bkUrl').value.trim(), interval = $('bkInterval').value;
-    var folderId = folderIdFrom(folderUrl);
-    if (interval !== 'off' || url) {
+    var folderUrl = $('bkFolder').value.trim(), url = $('bkUrl').value.trim(), folderId = folderIdFrom(folderUrl);
+    if (url || folderUrl) {
       if (!folderId) { bkMsg(T('Paste a valid Google Drive folder link.', 'সঠিক Google Drive ফোল্ডারের লিংক দিন।'), 'bad'); return; }
       if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec/.test(url)) { bkMsg(T('Paste the Apps Script Web App URL (ends with /exec).', 'Apps Script Web App URL দিন (শেষে /exec থাকে)।'), 'bad'); return; }
     }
-    if (interval === '1m' && !confirm(T('Every minute sends the FULL lifetime data each time and creates many files. Continue?', 'প্রতি মিনিটে প্রতিবার পুরো লাইফটাইম ডাটা যাবে এবং অনেক ফাইল হবে। চালিয়ে যাবেন?'))) return;
-    var val = { folderUrl: folderUrl, folderId: folderId, scriptUrl: url, interval: interval, keep: Math.max(0, Number($('bkKeep').value) || 0), token: bk.cfg.token };
+    var val = Object.assign({}, bk.cfg, { folderUrl: folderUrl, folderId: folderId, scriptUrl: url, token: bk.cfg.token });
+    delete val.interval;   // পুরনো "সব একবারে" অটো ব্যাকআপ আর নেই (এখন উপরের প্যানেলে / প্রতিটা অ্যাপে)
     bkMsg('');
     SCS.q(sb.from('sys_settings').upsert({ key: 'backup', value: val }))
-      .then(function () { bk.cfg = val; return SCS.q(sb.rpc('scs_backup_schedule', { p_interval: interval })); })
-      .then(function (expr) { bkMsg(interval === 'off' ? T('Saved. Auto backup is off.', 'সেভ হয়েছে। অটো ব্যাকআপ বন্ধ।') : T('Saved. Auto backup scheduled: ', 'সেভ হয়েছে। অটো ব্যাকআপ চালু: ') + expr + ' (UTC)', 'ok'); loadBkStatus(); })
+      .then(function () { bk.cfg = val; bkMsg(T('Saved. Now turn on auto backup in the panel above or inside each app.', 'সেভ হয়েছে। এখন উপরের প্যানেলে বা প্রতিটা অ্যাপের ভেতরে অটো ব্যাকআপ চালু করুন।'), 'ok'); if (bk.panel) bk.panel.reload(); })
       .catch(function (e) { bkMsg(SCS.err(e), 'bad'); });
   };
-  $('bkNow').onclick = function () {
-    $('bkNow').disabled = true; bkMsg('');
-    SCS.q(sb.rpc('scs_backup_run', { p_manual: true })).then(function (r) {
-      bkMsg(T('Sent: ', 'পাঠানো হয়েছে: ') + r.filename + T(' — check the result below in a few seconds.', ' — কয়েক সেকেন্ড পর নিচে ফলাফল দেখুন।'), 'ok');
-      setTimeout(loadBkStatus, 6000);
-    }).catch(function (e) { bkMsg(SCS.err(e), 'bad'); }).then(function () { $('bkNow').disabled = false; });
-  };
-  $('bkRefresh').onclick = loadBkStatus;
-  /* ব্যাকআপের সময়কাল: লাইফটাইম / বছর / মাস / তারিখ থেকে তারিখ */
-  (function () {
-    var now = new Date();
-    $('bkYear').value = now.getFullYear();
-    $('bkMonth').value = SCS.fmt(now, 'yyyy-MM');
-    $('bkFrom').value = SCS.fmt(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd');
-    $('bkTo').value = SCS.fmt(now, 'yyyy-MM-dd');
-    $('bkScope').onchange = function () {
-      var v = this.value;
-      $('bkYear').classList.toggle('hidden', v !== 'year');
-      $('bkMonth').classList.toggle('hidden', v !== 'month');
-      $('bkFrom').classList.toggle('hidden', v !== 'range');
-      $('bkTo').classList.toggle('hidden', v !== 'range');
-    };
-  })();
-  function bkRange() {
-    var v = $('bkScope').value, f = null, t = null, label = 'lifetime';
-    if (v === 'year') { var y = Number($('bkYear').value) || new Date().getFullYear(); f = y + '-01-01'; t = y + '-12-31'; label = 'year-' + y; }
-    if (v === 'month') { var m = $('bkMonth').value; if (m) { var d = new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0); f = m + '-01'; t = m + '-' + String(d.getDate()).padStart(2, '0'); label = 'month-' + m; } }
-    if (v === 'range') { f = $('bkFrom').value || null; t = $('bkTo').value || null; label = (f || 'start') + '_to_' + (t || 'today'); }
-    return { p_from: f, p_to: t, label: label };
-  }
-  function downloadBackup(range) {
-    return SCS.q(sb.rpc('scs_backup_snapshot', { p_from: range.p_from, p_to: range.p_to })).then(function (data) {
-      var blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'SCS-backup-' + range.label + '-' + SCS.fmt(new Date(), 'yyyy-MM-dd_HH-mm-ss') + '.json';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
-      return data;
-    });
-  }
-  $('bkDownload').onclick = function () {
-    $('bkDownload').disabled = true;
-    downloadBackup(bkRange()).then(function () { toast(T('Backup downloaded', 'ব্যাকআপ ডাউনলোড হয়েছে')); })
-      .catch(function (e) { toast(SCS.err(e)); }).then(function () { $('bkDownload').disabled = false; });
-  };
-
-  /* ---------- রিসেট: ৭ ধাপে নিশ্চিত করা ---------- */
-  var RS = null;
-  function rsRender() {
-    var b = $('rsBox'); if (!RS) { b.innerHTML = ''; return; }
-    var st = RS.step, h = '<div style="margin-top:12px;padding:14px;border-radius:14px;background:#fef2f2;border:1px solid #fecaca">' +
-      '<div class="small" style="font-weight:800;color:#b91c1c;margin-bottom:8px">' + T('Step ', 'ধাপ ') + st + ' / 7</div>';
-    if (st === 1) h += '<p style="margin:0 0 10px">' + T('Everything in every app will be permanently erased. This cannot be undone without a backup file.', 'সব অ্যাপের সবকিছু চিরতরে মুছে যাবে। ব্যাকআপ ফাইল ছাড়া এটা আর ফেরানো যাবে না।') + '</p>' +
-      '<label style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="rsC1"> ' + T('I understand that ALL data will be erased.', 'আমি বুঝেছি যে সব ডাটা মুছে যাবে।') + '</label>';
-    if (st === 2) h += '<p style="margin:0 0 10px">' + T('First download a LIFETIME backup of everything. Keep the file safe — it is the only way back.', 'আগে সবকিছুর লাইফটাইম ব্যাকআপ ডাউনলোড করুন। ফাইলটা যত্নে রাখুন — ফেরত আনার এটাই একমাত্র উপায়।') + '</p>' +
-      '<button class="btn p" type="button" id="rsBk">⬇ ' + T('Download lifetime backup', 'লাইফটাইম ব্যাকআপ ডাউনলোড') + '</button> ' + (RS.bk ? '<b style="color:#059669">✅ ' + T('Done', 'হয়েছে') + '</b>' : '');
-    if (st === 3) h += '<p style="margin:0 0 8px;font-weight:700">' + T('Question: whose data will this reset erase?', 'প্রশ্ন: এই রিসেটে কার ডাটা মুছবে?') + '</p>' +
-      ['one|' + T('Only one app', 'শুধু একটা অ্যাপের'), 'all|' + T('All apps of the whole company', 'পুরো কোম্পানির সব অ্যাপের'), 'none|' + T('Nothing will be erased', 'কিছুই মুছবে না')].map(function (o) {
-        var p = o.split('|'); return '<label style="display:block;margin:4px 0"><input type="radio" name="rsQ" value="' + p[0] + '"> ' + esc(p[1]) + '</label>';
-      }).join('');
-    if (st === 4) h += '<p style="margin:0 0 8px">' + T('Type your own account email to confirm it is you:', 'আপনি নিজেই কি না নিশ্চিত করতে নিজের অ্যাকাউন্টের ইমেইল লিখুন:') + '</p><input class="in-f" id="rsEmail" autocomplete="off" />';
-    if (st === 5) h += '<p style="margin:0 0 8px">' + (RS.sent ? T('A 6-digit code was sent to ', '৬ সংখ্যার কোড পাঠানো হয়েছে: ') + '<b>' + esc(RS.sent) + '</b>' : T('A code will be emailed to your account email.', 'আপনার অ্যাকাউন্টের ইমেইলে একটা কোড যাবে।')) + '</p>' +
-      '<button class="btn g" type="button" id="rsSend">' + (RS.sent ? T('Send again', 'আবার পাঠান') : T('Email me the code', 'ইমেইলে কোড পাঠান')) + '</button> ' +
-      (RS.sent ? '<input class="in-f" id="rsCode" inputmode="numeric" maxlength="6" placeholder="••••••" style="width:120px;display:inline-block;margin-left:6px;letter-spacing:4px" />' : '');
-    if (st === 6) h += '<p style="margin:0 0 8px">' + T('Type exactly', 'হুবহু লিখুন') + ': <code style="font-weight:900">ERASE ALL DATA</code></p><input class="in-f" id="rsPhrase" autocomplete="off" />';
-    if (st === 7) h += '<p style="margin:0 0 8px;font-weight:800;color:#b91c1c">' + T('Last chance. After you press the red button everything is erased.', 'শেষ সুযোগ। লাল বাটন চাপলে সব মুছে যাবে।') + '</p>' +
-      '<button class="btn" type="button" id="rsGo" style="background:#dc2626;color:#fff" disabled>' + T('Erase everything', 'সব মুছে ফেলুন') + ' (<span id="rsCd">10</span>)</button>';
-    h += '<div id="rsErr" class="small" style="color:#b91c1c;margin-top:8px;font-weight:700">' + esc(RS.err || '') + '</div>' +
-      '<div style="display:flex;gap:8px;margin-top:12px"><button class="btn g" type="button" id="rsCancel">' + T('Cancel', 'বাতিল') + '</button>' +
-      (st < 7 ? '<button class="btn p" type="button" id="rsNext">' + T('Next', 'পরের ধাপ') + ' →</button>' : '') + '</div></div>';
-    b.innerHTML = h; RS.err = '';
-    $('rsCancel').onclick = function () { RS = null; rsRender(); };
-    if ($('rsBk')) $('rsBk').onclick = function () {
-      this.disabled = true;
-      downloadBackup({ p_from: null, p_to: null, label: 'lifetime-before-reset' }).then(function () { RS.bk = true; rsRender(); }, function (e) { RS.err = SCS.err(e); rsRender(); });
-    };
-    if ($('rsSend')) $('rsSend').onclick = function () {
-      this.disabled = true;
-      SCS.callFn('password-reset', { action: 'resetCode' }).then(function (r) { RS.sent = r.to; rsRender(); }, function (e) { RS.err = SCS.err(e); rsRender(); });
-    };
-    if ($('rsGo')) {
-      var n = 10, iv = setInterval(function () {
-        if (!RS || !$('rsCd')) { clearInterval(iv); return; }
-        n--; $('rsCd').textContent = n;
-        if (n <= 0) { clearInterval(iv); $('rsGo').disabled = false; }
-      }, 1000);
-      $('rsGo').onclick = function () {
-        SCS.confirmBox(T('Erase ALL data now?', 'এখনই সব ডাটা মুছবেন?'), T('This is the final confirmation.', 'এটাই শেষ নিশ্চিতকরণ।'), T('Erase', 'মুছে ফেলুন'), true).then(function (ok) {
-          if (!ok) return;
-          $('rsGo').disabled = true;
-          SCS.q(sb.rpc('scs_reset_all', { p_code: RS.code, p_phrase: RS.phrase })).then(function (r) {
-            if (!r || !r.ok) { RS.err = (r && r.error) || 'Failed'; RS.step = 5; RS.sent = RS.sent || ''; rsRender(); return; }
-            $('rsBox').innerHTML = '<div class="msg ok" style="margin-top:12px">✅ ' + T('Reset finished. All app data was erased.', 'রিসেট শেষ। সব অ্যাপের ডাটা মুছে গেছে।') + '<br>' +
-              Object.keys(r.deleted || {}).map(function (k) { return esc(k) + ': ' + r.deleted[k]; }).join(' · ') + '</div>';
-            RS = null;
-          }, function (e) { RS.err = SCS.err(e); rsRender(); });
-        });
-      };
-    }
-    if ($('rsNext')) $('rsNext').onclick = function () {
-      var s = RS.step, bad = '';
-      if (s === 1 && !$('rsC1').checked) bad = T('Tick the box first.', 'আগে বক্সে টিক দিন।');
-      if (s === 2 && !RS.bk) bad = T('Download the lifetime backup first.', 'আগে লাইফটাইম ব্যাকআপ ডাউনলোড করুন।');
-      if (s === 3) { var q = document.querySelector('input[name=rsQ]:checked'); if (!q || q.value !== 'all') bad = T('Wrong answer — a reset erases the data of ALL apps.', 'ভুল উত্তর — রিসেট সব অ্যাপের ডাটা মুছে দেয়।'); }
-      if (s === 4 && $('rsEmail').value.trim().toLowerCase() !== String(SCS.me.email || '').toLowerCase()) bad = T('This is not your account email.', 'এটা আপনার অ্যাকাউন্টের ইমেইল নয়।');
-      if (s === 5) { var c = $('rsCode') ? $('rsCode').value.trim() : ''; if (!/^\d{6}$/.test(c)) bad = T('Enter the 6-digit code from the email.', 'ইমেইলের ৬ সংখ্যার কোড দিন।'); else RS.code = c; }
-      if (s === 6) { if ($('rsPhrase').value.trim() !== 'ERASE ALL DATA') bad = T('The text does not match.', 'লেখা মেলেনি।'); else RS.phrase = 'ERASE ALL DATA'; }
-      if (bad) { RS.err = bad; rsRender(); return; }
-      RS.step++; rsRender();
-    };
-  }
-  $('rsStart').onclick = function () {
-    SCS.confirmBox(T('Start the reset process?', 'রিসেট শুরু করবেন?'), T('You will be asked to confirm 7 times.', '৭ বার নিশ্চিত করতে হবে।'), T('Start', 'শুরু'), true).then(function (ok) {
-      if (ok) { RS = { step: 1 }; rsRender(); }
-    });
-  };
-  $('bkRestoreBtn').onclick = function () { $('bkFile').click(); };
-  $('bkFile').onchange = function () {
-    var f = this.files[0]; this.value = ''; if (!f) return;
-    f.text().then(function (txt) {
-      var data = JSON.parse(txt);
-      if (data.format !== 'scs-management-backup') throw new Error(T('This is not an SCS Management backup file.', 'এটা SCS Management এর ব্যাকআপ ফাইল নয়।'));
-      var counts = data.counts || {};
-      var sum = Object.keys(counts).map(function (k) { return k + ': ' + counts[k]; }).join(', ');
-      if (!confirm(T('Restore backup from ', 'রিস্টোর করবেন? ব্যাকআপের সময়: ') + SCS.fmt(data.created_at, 'd MMM yyyy, HH:mm') + '\n\n' + sum + '\n\n' + T('Only missing rows are added; existing data is not changed or deleted.', 'শুধু যেগুলো নেই সেগুলো যোগ হবে; আগের ডাটা বদলাবে বা মুছবে না।'))) return;
-      $('bkRestoreOut').innerHTML = '<div class="spin" style="margin:16px auto"></div>';
-      return SCS.q(sb.rpc('scs_backup_restore', { p: data })).then(function (res) {
-        $('bkRestoreOut').innerHTML = '<div class="msg ok" style="margin-top:12px">✅ ' + T('Restore finished. Rows added per table:', 'রিস্টোর শেষ। প্রতিটি টেবিলে যোগ হওয়া রো:') + '<br>' +
-          Object.keys(res).map(function (k) { return esc(k) + ': <b>' + esc(res[k]) + '</b>'; }).join(' · ') + '</div>';
-      });
-    }).catch(function (e) { $('bkRestoreOut').innerHTML = '<div class="msg bad" style="margin-top:12px">' + esc(SCS.err(e)) + '</div>'; });
-  };
-
   $('srvCheck').onclick = function () {
     $('srvOut').classList.remove('hidden'); $('srvOut').textContent = '…';
     SCS.callFn('password-reset', { action: 'health' }).then(function (r) {

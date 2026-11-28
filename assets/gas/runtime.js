@@ -35,6 +35,45 @@ function encRows(rows) {
   return out.slice(0, last + 1);
 }
 function gasError(msg) { var e = new Error(msg); return e; }
+
+/* ------------------------------------------------------------------ বড় শিট: টুকরো করে রাখা (v15)
+ *  শিটের JSON ১.৫ MB এর বেশি হলে রো গুলো কয়েক MB এর টুকরো (gas_chunks) হয়ে যায়; শিটে থাকে শুধু টুকরোর তালিকা।
+ *  টুকরোর নাম = তার ডাটার হ্যাশ, তাই একটা কোটেশন বদলালে শুধু সেই টুকরোটাই আবার যায় (পুরো ৭৮ MB নয়)।
+ *  একই নিয়ম assets/scs-backup.js এও আছে (রিস্টোর)। */
+var CHUNK_FROM = 1500000, CHUNK_MAX = 4000000, CHUNK_MINSZ = 400000;
+function strHash(s) {
+  var h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (var i = 0, ch; i < s.length; i++) { ch = s.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return ('0000000' + (h2 >>> 0).toString(16)).slice(-8) + ('0000000' + (h1 >>> 0).toString(16)).slice(-8);
+}
+/** rowStrs = প্রতিটা রো এর JSON; ফেরত: [{h, a, b, body}] (a..b = রো এর সীমা) */
+function splitChunks(rowStrs) {
+  var out = [], a = 0, size = 0;
+  for (var i = 0; i < rowStrs.length; i++) {
+    var s = rowStrs[i]; size += s.length + 1;
+    var cut = size >= CHUNK_MAX || (size >= CHUNK_MINSZ && parseInt(strHash(s.length + '|' + s.slice(-160)).slice(-2), 16) % 8 === 0);
+    if (cut || i === rowStrs.length - 1) {
+      var body = '[' + rowStrs.slice(a, i + 1).join(',') + ']';
+      out.push({ h: strHash(body) + (i + 1 - a).toString(36), a: a, b: i + 1, body: body });
+      a = i + 1; size = 0;
+    }
+  }
+  return out;
+}
+var CHUNK_CACHE = {};   // 'app|name|h' -> এনকোড করা রো
+var CHUNK_KNOWN = {};   // 'app|name' -> { h: true } সার্ভারে আছে
+function slimVal(v) { return typeof v === 'string' && v.length > 400 ? '[' + v.length + ' chars]' : v; }
+function slimAudit(list) {
+  return list.map(function (a) {
+    ['before', 'after'].forEach(function (k) {
+      var o = a[k]; if (!o || typeof o !== 'object') return;
+      var n = {}; Object.keys(o).forEach(function (f) { n[f] = slimVal(o[f]); }); a[k] = n;
+    });
+    return a;
+  });
+}
 /** অজানা মেথড ডাকলে ভাঙবে না (ফরম্যাটিং ইত্যাদি) — নিজেকেই ফেরত দেয় */
 function chainable(obj) {
   if (typeof Proxy === 'undefined') return obj;
@@ -79,8 +118,33 @@ function SupabaseStore() {
   var app = function (a) { return encodeURIComponent(a || CFG.app); };
   A.listSheets = function (a) { return rest('GET', '/rest/v1/gas_sheets?app_key=eq.' + app(a) + '&select=name,idx,version&order=idx.asc,name.asc') || []; };
   A.loadSheet = function (a, name) {
-    var rows = rest('GET', '/rest/v1/gas_sheets?app_key=eq.' + app(a) + '&name=eq.' + encodeURIComponent(name) + '&select=name,idx,version,data,meta');
-    return rows && rows[0] ? rows[0] : null;
+    var rows = rest('GET', '/rest/v1/gas_sheets?app_key=eq.' + app(a) + '&name=eq.' + encodeURIComponent(name) + '&select=name,idx,version,data,meta,chunks');
+    var row = rows && rows[0] ? rows[0] : null;
+    if (row && row.chunks && row.chunks.length) row.data = loadChunks(a || CFG.app, name, row.chunks);
+    return row;
+  };
+  /** টুকরো করা শিট: যে টুকরো আগে আনা নেই শুধু সেগুলো আনা (৬টা করে) */
+  function loadChunks(a, name, hs) {
+    var pre = a + '|' + name + '|', need = hs.filter(function (h) { return !CHUNK_CACHE[pre + h]; });
+    for (var i = 0; i < need.length; i += 6) {
+      var part = need.slice(i, i + 6);
+      var got = rest('GET', '/rest/v1/gas_chunks?app_key=eq.' + encodeURIComponent(a) + '&name=eq.' + encodeURIComponent(name) + '&h=in.(' + part.join(',') + ')&select=h,data') || [];
+      got.forEach(function (c) { CHUNK_CACHE[pre + c.h] = c.data || []; });
+    }
+    var known = CHUNK_KNOWN[a + '|' + name] = {}, out = [];
+    hs.forEach(function (h) {
+      var d = CHUNK_CACHE[pre + h];
+      if (!d) throw gasError('Part of the sheet "' + name + '" is missing — please reload.');
+      known[h] = true; for (var j = 0; j < d.length; j++) out.push(d[j]);
+    });
+    // এই শিটের পুরনো টুকরো মেমরি থেকে সরানো
+    Object.keys(CHUNK_CACHE).forEach(function (k) { if (k.indexOf(pre) === 0 && !known[k.slice(pre.length)]) delete CHUNK_CACHE[k]; });
+    return out;
+  }
+  A.putChunk = function (a, name, h, body) {
+    var raw = '{"p_app":' + JSON.stringify(a) + ',"p_name":' + JSON.stringify(name) + ',"p_h":"' + h + '","p_data":' + body + (a !== CFG.app ? ',"p_via":' + JSON.stringify(CFG.app) : '') + '}';
+    var r = http('POST', CFG.url + '/rest/v1/rpc/gas_put_chunk', raw, H());
+    if (r.status < 200 || r.status >= 300) { var j = null; try { j = JSON.parse(r.text); } catch (e) {} throw gasError('Could not save a part of "' + name + '": ' + ((j && j.message) || ('Server error ' + r.status))); }
   };
   A.loadProps = function () { return rest('GET', '/rest/v1/gas_props?app_key=eq.' + app() + '&select=scope,key,value') || []; };
   A.commit = function (a, sheets, props, audit) {
@@ -139,13 +203,17 @@ function MemoryStore(seed) {
       var k = a + '|' + s.name;
       if (s.deleted) { delete sheets[k]; return; }
       var cur = sheets[k];
-      sheets[k] = { name: s.name, idx: s.idx != null ? s.idx : (cur ? cur.idx : 0), version: (cur ? cur.version : 0) + 1, data: s.data, meta: s.meta || {} };
+      var data = s.data;
+      if (s.chunks) { data = []; s.chunks.forEach(function (h) { var c = mchunks[k + '|' + h]; if (!c) { var e = gasError('SCS_CONFLICT'); e.conflict = true; throw e; } data = data.concat(c); }); A.chunkCommits = (A.chunkCommits || 0) + 1; }
+      sheets[k] = { name: s.name, idx: s.idx != null ? s.idx : (cur ? cur.idx : 0), version: (cur ? cur.version : 0) + 1, data: data, meta: s.meta || {} };
       out[s.name] = sheets[k].version;
     });
     pp.forEach(function (p) { var k = p.scope + '|' + p.key; if (p.value === null) delete props[k]; else props[k] = { scope: p.scope, key: p.key, value: p.value }; });
     (self.__AUDIT = self.__AUDIT || []).push.apply(self.__AUDIT, audit);
     return out;
   };
+  var mchunks = {};
+  A.putChunk = function (a, name, h, body) { mchunks[a + '|' + name + '|' + h] = JSON.parse(body); A.chunkPuts = (A.chunkPuts || 0) + 1; };
   A.lock = function () { return true; };
   A.unlock = function () {};
   A.alias = function () { return null; };
@@ -160,7 +228,7 @@ function MemoryStore(seed) {
   A.fileUpload = function (path, bytes) { blobs[path] = bytes; };
   A.fileDownload = function (path) { if (!blobs[path]) throw gasError('File not found'); return blobs[path]; };
   A.api = function (fn) { throw gasError('Server function "' + fn + '" is not available in test mode'); };
-  A.dump = function () { return { sheets: sheets, props: props, files: files }; };
+  A.dump = function () { return { sheets: sheets, props: props, files: files, chunkPuts: A.chunkPuts || 0, chunkCommits: A.chunkCommits || 0 }; };
 }
 
 /* ------------------------------------------------------------------ লেনদেন (transaction) */
@@ -272,6 +340,21 @@ function auditFor(s) {
   return out;
 }
 
+/** একটা শিট সেভের জন্য: ছোট হলে পুরো ডাটা, বড় হলে টুকরো (নতুন টুকরোগুলো আগে আপলোড) */
+function sheetPayload(app, n, s, known) {
+  var enc = encRows(s.rows), strs = enc.map(function (r) { return JSON.stringify(r); }), total = 0;
+  for (var i = 0; i < strs.length; i++) total += strs[i].length + 1;
+  var p = { name: n, base: s.base, idx: s.idx, meta: s.meta };
+  if (total <= CHUNK_FROM || !STORE.putChunk) { p.data = enc; return p; }
+  var key = app + '|' + n, have = CHUNK_KNOWN[key] || {}, list = splitChunks(strs), now = {};
+  list.forEach(function (c) {
+    if (!have[c.h]) STORE.putChunk(app, n, c.h, c.body);
+    now[c.h] = true; CHUNK_CACHE[key + '|' + c.h] = enc.slice(c.a, c.b);
+  });
+  known[key] = now;
+  p.chunks = list.map(function (c) { return c.h; });
+  return p;
+}
 function txCommit() {
   // আগে লিংক করা অন্য অ্যাপ (যেমন Attendance -> Report সামারি), তারপর নিজের অ্যাপ
   Object.keys(TX.apps).forEach(function (a) { if (a !== CFG.app) commitApp(a); });
@@ -279,20 +362,21 @@ function txCommit() {
 }
 function commitApp(app) {
   var A = txA(app), own_ = app === CFG.app;
-  var sheets = [], audit = [];
+  var sheets = [], audit = [], known = {};
   Object.keys(A.sheets).forEach(function (n) {
     var s = A.sheets[n];
     if (!s.dirty) return;
-    sheets.push({ name: n, base: s.base, idx: s.idx, data: encRows(s.rows), meta: s.meta });
-    try { audit = audit.concat(auditFor(s)); } catch (e) {}
+    sheets.push(sheetPayload(app, n, s, known));
+    try { audit = audit.concat(slimAudit(auditFor(s))); } catch (e) {}
   });
+  var markKnown = function () { Object.keys(known).forEach(function (k) { CHUNK_KNOWN[k] = known[k]; }); };
   Object.keys(A.deleted).forEach(function (n) {
     sheets.push({ name: n, base: A.deleted[n], deleted: true });
     audit.push({ sheet: n, entity: n, ref: n, action: 'Delete', before: { sheet: n }, after: null });
   });
   if (!own_) {
     if (!sheets.length) return;
-    var r0 = STORE.commit(app, sheets, [], audit) || {};
+    var r0 = STORE.commit(app, sheets, [], audit) || {}; markKnown();
     sheets.forEach(function (s) { if (s.deleted) delete SHEET_CACHE[app + '|' + s.name]; else { var t = A.sheets[s.name]; SHEET_CACHE[app + '|' + s.name] = { version: r0[s.name] || (s.base + 1), idx: t.idx, rows: t.rows, meta: t.meta }; } });
     return;
   }
@@ -307,7 +391,7 @@ function commitApp(app) {
     return { scope: k.slice(0, i), key: key, value: val };
   });
   if (!sheets.length && !props.length) return;
-  var res = STORE.commit(app, sheets, props, audit) || {};
+  var res = STORE.commit(app, sheets, props, audit) || {}; markKnown();
   // সফল: ক্যাশ আপডেট
   sheets.forEach(function (s) {
     if (s.deleted) { delete SHEET_CACHE[app + '|' + s.name]; return; }
@@ -1174,7 +1258,7 @@ var SCS_GAS = {
   /** SCS অ্যাকাউন্টের এমপ্লয়ি তালিকা (প্রোফাইল থেকে) — host পাঠায় */
   employees: function () { return CFG.employees || []; },
   rest: function (method, path, body, prefer) { return STORE.rest ? STORE.rest(method, path, body, prefer) : null; },
-  notify: function (event, title, body, url, target) { self.postMessage({ type: 'notify', event: event, title: title, body: body, url: url, target: target || null }); },
+  notify: function (event, title, body, url, target, task) { self.postMessage({ type: 'notify', event: event, title: title, body: body, url: url, target: target || null, task: task || null }); },
   tx: function () { return TX; }
 };
 
@@ -1195,7 +1279,7 @@ function runCall(fnName, args) {
     try {
       txCommit();   // Apps Script এর মতো: ভুল হলেও তার আগের লেখা থাকে
     } catch (ce) {
-      if (ce.conflict && attempt < 3) { SHEET_CACHE = {}; PROP_CACHE = null; continue; }
+      if (ce.conflict && attempt < 3) { SHEET_CACHE = {}; PROP_CACHE = null; CHUNK_KNOWN = {}; continue; }
       if (TX.locked) STORE.unlock();
       TX = null;
       throw ce;

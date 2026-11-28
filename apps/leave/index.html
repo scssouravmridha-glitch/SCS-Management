@@ -7,9 +7,9 @@
 <link rel="icon" type="image/png" href="../../assets/icon-192.png" />
 <script src="../../assets/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="../../assets/scs-core.js?v=202611281026"></script>
-<script src="adapter-pre.js?v=202611281026"></script>
-<script src="../../assets/gas/host.js?v=202611281026" data-app="leave" data-server="adapter.gs"></script>
+<script src="../../assets/scs-core.js?v=202611281315"></script>
+<script src="adapter-pre.js?v=202611281315"></script>
+<script src="../../assets/gas/host.js?v=202611281315" data-app="leave" data-server="adapter.gs"></script>
 <!-- ============ আসল অ্যাপ (Apps Script Index.html) ============ -->
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -161,14 +161,7 @@ body.fit .table-wrap{overflow:visible}body.fit table{font-size:11px}body.fit td{
   </head>
   <body>
     
-    <div id="loginView" class="login-wrap">
-<div class="lhead"><div class="lbrand"><div class="sq">SCS</div><div><b>SCS Leave Application</b><small>Swarup Construction Solution</small></div></div><div style="display:flex;gap:12px;align-items:center"><div class="lq">"Honesty is our Business Capital"</div><button class="pill" onclick="toggleLang()"><span class="langtxt">বাংলা</span></button></div></div>
-<div class="lmain"><div id="loginCard" class="lcard"><div class="center"><div class="lock"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div><div style="font-weight:700;font-size:18px">Enter Security PIN</div></div>
-<input id="pinInput" type="password" maxlength="4" style="display:none" />
-<div class="dots" id="pinDots"><i></i><i></i><i></i><i></i></div><div class="keypad" id="pinPad"></div>
-<button id="loginGo" class="lgo login-btn" disabled>Authorize &amp; Enter &rarr;</button></div>
-</div>
-<div class="lfoot">&copy; 2026 Swarup Construction Solution (SCS). All Rights Reserved.</div></div>
+    <div id="loginView" class="hidden"><input id="pinInput" type="hidden" /><div id="pinDots"></div><div id="pinPad"></div><button id="loginGo" disabled hidden></button><div id="loginCard"></div></div>
 
     <div id="appView" class="hidden">
 <header class="apphead"><div class="brand"><div class="logo"><i>SCS</i>SCS Leave Application</div><div class="tag"><b>Swarup Construction Solution</b><em>"Honesty is our Business Capital"</em></div></div>
@@ -1856,5 +1849,5 @@ renderAll();
 
     </script>
   <!-- ============ SCS Management: অ্যাপ-ভিত্তিক সমন্বয় ============ -->
-<script src="adapter.js?v=202611281026"></script></body>
+<script src="adapter.js?v=202611281315"></script></body>
 </html>

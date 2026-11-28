@@ -239,25 +239,8 @@ function badge(st, v){
 }
 
 /* ------------------------------ layout ------------------------------ */
-function renderLogin(){
-  var dots=''; for(var i=0;i<4;i++){ var on = S.pin.length>i; dots += '<div class="w-4 h-4 rounded-full transition-all duration-200 '+(on?'bg-pink-600 scale-125 shadow-md shadow-pink-500/50':'bg-slate-200 dark:bg-slate-700')+'"></div>'; }
-  if(S.pin.length>4) for(var j=4;j<S.pin.length;j++) dots += '<div class="w-4 h-4 rounded-full transition-all duration-200 bg-pink-600 scale-125 shadow-md shadow-pink-500/50"></div>';
-  var kb='', keyCls='h-14 rounded-2xl text-xl font-bold bg-slate-100/90 hover:bg-pink-50 hover:text-pink-600 active:scale-95 dark:bg-slate-800 dark:hover:bg-slate-700/80 dark:hover:text-pink-400 transition-all duration-150 flex items-center justify-center shadow-xs cursor-pointer';
-  ['1','2','3','4','5','6','7','8','9'].forEach(function(d){ kb += '<button type="button" class="'+keyCls+'" onclick="pinKey(\''+d+'\')">'+d+'</button>'; });
-  kb += '<button type="button" class="h-14 rounded-2xl text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 active:scale-95 bg-slate-100/60 dark:bg-slate-800/40 transition-all flex items-center justify-center cursor-pointer" onclick="pinKey(\'C\')">CLEAR</button>';
-  kb += '<button type="button" class="'+keyCls+'" onclick="pinKey(\'0\')">0</button>';
-  kb += '<button type="button" class="h-14 rounded-2xl text-slate-600 hover:text-rose-600 active:scale-95 bg-slate-100/60 dark:bg-slate-800/40 dark:text-slate-300 dark:hover:text-rose-400 transition-all flex items-center justify-center cursor-pointer" onclick="pinKey(\'B\')">'+ic('delete','w-5 h-5')+'</button>';
-  return '<div class="min-h-screen flex flex-col justify-between transition-colors duration-200 bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100">'+
-   '<header class="w-full bg-white dark:bg-slate-900 border-b border-slate-300 dark:border-slate-700 shadow-xs px-4 sm:px-8 py-3.5 flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-xl bg-pink-600 text-white font-black text-sm flex items-center justify-center shadow-md shadow-pink-600/30">SCS</div><div class="flex flex-col"><span class="font-extrabold text-slate-900 dark:text-slate-100 text-base sm:text-lg leading-tight tracking-tight">'+h(t('appName'))+'</span><span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Swarup Construction Solution</span></div></div>'+
-   '<div class="flex items-center gap-3"><span class="hidden sm:inline-block text-xs font-semibold text-pink-600 dark:text-pink-400 italic">"Honesty is our Business Capital"</span><button type="button" onclick="toggleLang()" title="'+(S.lang==='bn'?'Switch to English':'বাংলায় পরিবর্তন করুন')+'" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 active:scale-95 transition-all border border-slate-200 dark:border-slate-700 shadow-xs cursor-pointer">'+ic('globe','w-4 h-4 text-pink-600 dark:text-pink-400')+'<span>'+(S.lang==='bn'?'বাং':'EN')+'</span></button></div></header>'+
-   '<div class="flex-1 flex flex-col items-center justify-center p-4"><div class="w-full max-w-sm rounded-3xl p-6 md:p-8 shadow-2xl border transition-all duration-300 bg-white/95 border-slate-200/80 dark:bg-slate-900/95 dark:border-slate-800">'+
-   '<div class="flex flex-col items-center mb-6"><div class="w-14 h-14 rounded-2xl bg-pink-100 dark:bg-pink-950/60 text-pink-600 dark:text-pink-400 flex items-center justify-center mb-3 shadow-inner">'+ic('lock','w-7 h-7')+'</div><h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">'+h(t('enterPin'))+'</h2><p class="text-xs text-slate-400 mt-1 text-center">'+h(t('enterPinSub'))+'</p></div>'+
-   '<div id="pin-dots" class="flex justify-center items-center gap-3.5 mb-6 h-12">'+dots+'</div>'+
-   '<div class="grid grid-cols-3 gap-3 mb-4">'+kb+'</div>'+
-   '<button id="pin-go" type="button" onclick="doLogin()" '+(S.pin.length<4||S.pinBusy?'disabled':'')+' class="w-full py-3.5 px-4 rounded-2xl bg-pink-600 hover:bg-pink-700 active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none text-white font-semibold shadow-lg shadow-pink-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer"><span>'+h(S.pinBusy?t('loading'):t('authorize'))+'</span>'+ic('arrow-right','w-4 h-4')+'</button>'+
-   '</div><div class="mt-6 text-center text-xs text-slate-400 flex items-center gap-1.5">'+ic('shield-check','w-4 h-4 text-emerald-500')+'<span>'+h(t('engine'))+'</span></div></div>'+
-   '<footer class="py-4 text-center text-xs text-slate-400 border-t border-slate-300 dark:border-slate-700">'+h(t('rights',{y:new Date().getFullYear()}))+'</footer></div>';
-}
+/* SCS: পিন-লগইন স্ক্রিন বাদ (SCS অ্যাকাউন্টই লগইন) */
+function renderLogin(){ return SCS.startHTML(); }
 
 /* update PIN dots and the go-button in place (no full re-render, so nothing jumps) */
 function pinPaint(dotsId, pin, btnId){
@@ -475,7 +458,7 @@ function boot(){
     go(S.page);
     /* warm the All Expenses cache in the background so the Expense tab opens instantly */
     if(S.page!=='all'){ var f=allFilter(), key=JSON.stringify(f); if(!QC[key]) api('listVouchers', S.token, f).then(function(r){ QC[key]=r.vouchers; }).catch(function(){}); }
-  }, function(){ if(!S.boot) doLogout(true); });
+  }, function(e){ if(!S.boot){ var r=document.getElementById('root'); if(r&&window.SCS) r.innerHTML=SCS.startHTML((e&&e.message)||String(e)); } });
 }
 
 /* ------------------------------ render root ------------------------------ */

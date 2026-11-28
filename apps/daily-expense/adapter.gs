@@ -75,7 +75,8 @@ function scsExpUserId_(empId) {
 var __scsSubmit = submitVoucher;
 submitVoucher = function () {
   var v = __scsSubmit.apply(this, arguments);
-  if (v) SCS_GAS.notify('submitted', 'Expense voucher · ' + (v.voucherNo || '') + ' · ' + (v.empName || ''), 'Total ৳' + (v.total || 0) + ' · ' + (v.date || ''));
+  if (v) SCS_GAS.notify('submitted', 'Expense voucher · ' + (v.voucherNo || '') + ' · ' + (v.empName || ''), 'Total ৳' + (v.total || 0) + ' · ' + (v.date || ''), '', null,
+    { kind: 'approve', what: 'expense voucher ' + (v.voucherNo || '') + (v.empName ? ' of ' + v.empName : '') });
   return v;
 };
 ['approveVoucher', 'returnVoucher'].forEach(function (fn) {

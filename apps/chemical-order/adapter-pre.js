@@ -1,2 +1,1 @@
-/* SCS Chemical Order — আগে-চলা অ্যাডাপ্টার: পিন লগইন স্ক্রিন শুরু থেকেই লুকানো */
-(function () { var s = document.createElement('style'); s.textContent = '#loginView{display:none!important}'; document.head.appendChild(s); })();
+/* SCS Chemical Order — আগে-চলা অ্যাডাপ্টার: পিন-লগইন স্ক্রিন বিল্ডের সময়ই বাদ (patches.json); খোলার সময় SCS এর খোলার স্ক্রিন দেখায় */

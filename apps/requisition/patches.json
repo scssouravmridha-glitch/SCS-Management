@@ -1,5 +1,6 @@
 [
   { "in": "html", "find": "var APP_ID = '<?= appId ?>';", "replace": "var APP_ID = 'scs-requisition';" },
   { "in": "html", "find": "var ADMIN_PIN = '2026';", "replace": "var ADMIN_PIN = '\\u0000';   /* SCS: Admin Console এর পিন (adapter.js বসায়) */" },
-  { "in": "html", "find": "function handleUserLogout() {", "replace": "function handleUserLogout() { if (window.SCS && SCS.signOut) { SCS.signOut(); return; }" }
+  { "in": "html", "find": "function handleUserLogout() {", "replace": "function handleUserLogout() { if (window.SCS && SCS.signOut) { SCS.signOut(); return; }" },
+  { "in": "html", "rx": "function renderLoginScreen\\(container\\) \\{.*?updateLangBtn\\(\\);\\s*\\}", "replace": "/* SCS: পিন-লগইন স্ক্রিন বাদ (SCS অ্যাকাউন্টই লগইন) */\n    function renderLoginScreen(container) { container.innerHTML = SCS.startHTML(); }" }
 ]

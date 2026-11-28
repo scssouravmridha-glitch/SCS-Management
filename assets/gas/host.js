@@ -110,11 +110,14 @@
   }
   function fireNotify(m) {
     if (test || !window.SCS || !SCS.sb) return;
-    SCS.sb.rpc('scs_app_notify', { p_app: APP, p_event: m.event, p_title: m.title, p_body: m.body || '', p_url: m.url || ('/apps/' + APP + '/'), p_target: m.target || null })
-      .then(function () { if (SCS.push && SCS.push.dispatch) SCS.push.dispatch(); });
+    var args = { p_app: APP, p_event: m.event, p_title: m.title, p_body: m.body || '', p_url: m.url || ('/apps/' + APP + '/'), p_target: m.target || null };
+    if (m.task) args.p_task = m.task;   // কাজের নোটিফিকেশন: "পরে মনে করিয়ে দিন" + কাজ বাকি থাকলে ভদ্র রিমাইন্ডার
+    SCS.sb.rpc('scs_app_notify', args).then(function (r) {
+      if (r && r.error && args.p_task) { delete args.p_task; return SCS.sb.rpc('scs_app_notify', args); }   // পুরনো ডাটাবেস (v15 SQL চালানো হয়নি)
+    }).then(function () { if (SCS.push && SCS.push.dispatch) SCS.push.dispatch(); });
   }
   /** অ্যাডাপ্টার পেজ থেকে নোটিফিকেশন পাঠাতে */
-  H.notify = function (event, title, body, url, target) { fireNotify({ event: event, title: title, body: body, url: url, target: target }); };
+  H.notify = function (event, title, body, url, target, task) { fireNotify({ event: event, title: title, body: body, url: url, target: target, task: task }); };
 
   /* ---------------- চালু করা ---------------- */
   function getText(url) { return fetch(url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('Could not load ' + url + ' (' + r.status + ')'); return r.text(); }); }

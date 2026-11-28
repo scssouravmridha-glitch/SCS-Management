@@ -402,6 +402,9 @@
       '.scs-nt{display:flex;gap:10px;padding:12px 14px;border-bottom:1px solid #e5e7eb;background:#fff;color:#111827;text-decoration:none;cursor:pointer}' +
       '.scs-nt.new{background:#fff5f9}.scs-nt .b{width:8px;height:8px;border-radius:50%;background:#e91e63;margin-top:7px;flex:none;visibility:hidden}.scs-nt.new .b{visibility:visible}' +
       '.scs-nt h4{margin:0;font-size:14px}.scs-nt p{margin:2px 0 0;font-size:12.5px;color:#4b5563}.scs-nt small{font-size:11px;color:#9ca3af}' +
+      '.scs-nt.task{cursor:default}.scs-nact{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}' +
+      '.scs-nact a,.scs-nact button{border:0;border-radius:10px;padding:7px 11px;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;background:#f3f4f6;color:#111827;font-family:inherit}' +
+      '.scs-nact a.o{background:#e91e63;color:#fff}' +
       '.scs-empty{padding:50px 16px;text-align:center;color:#6b7280;font-size:14px}' +
       '.scs-tip{margin:12px;padding:12px;border-radius:12px;background:#eff6ff;color:#1d4ed8;font-size:12.5px;line-height:1.55}' +
       '.scs-toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:2147483602;background:#111827;color:#fff;padding:11px 16px;border-radius:14px;font-size:13px;font-weight:600;box-shadow:0 14px 40px rgba(0,0,0,.3);max-width:92vw;cursor:pointer;animation:scsPop .16s ease-out}' +
@@ -525,12 +528,30 @@
       var tip = '';
       if (SCS.push.supported() && SCS.push.permission() !== 'granted') tip = '<div class="scs-tip">🔔 ' + T('Turn on push notifications to get alerts on this phone/computer even when the app is closed.', 'অ্যাপ বন্ধ থাকলেও এই ফোন/কম্পিউটারে নোটিফিকেশন পেতে পুশ নোটিফিকেশন চালু করুন।') + ' <a href="#" data-push-on style="font-weight:800;color:#e91e63">' + T('Turn on', 'চালু করুন') + '</a></div>';
       d.innerHTML = tip + (N.list.length ? N.list.map(function (n) {
-        return '<a class="scs-nt' + (n.read_at ? '' : ' new') + '" href="' + SCS.esc(SCS.url(n.url || '/')) + '"><span class="b"></span><div><h4>' + SCS.esc(n.title) + '</h4>' + (n.body ? '<p>' + SCS.esc(n.body) + '</p>' : '') + '<small>' + SCS.esc(SCS.ago(n.created_at)) + '</small></div></a>';
+        var href = SCS.esc(SCS.url(n.url || '/'));
+        if (n.task) {   // কাজের নোটিফিকেশন: এখনই খুলুন / পরে মনে করিয়ে দিন
+          var opts = N.snzOpen === n.id ? '<div class="scs-nact">' + [[15, T('15 min', '১৫ মিনিট')], [60, T('1 hour', '১ ঘণ্টা')], [180, T('3 hours', '৩ ঘণ্টা')], [-1, T('Tomorrow 9 AM', 'কাল সকাল ৯টা')]].map(function (o) {
+            return '<button type="button" data-snzv="' + n.id + '|' + o[0] + '">' + o[1] + '</button>';
+          }).join('') + '</div>' : '';
+          return '<div class="scs-nt task' + (n.read_at ? '' : ' new') + '"><span class="b"></span><div style="flex:1;min-width:0"><h4>' + SCS.esc(n.title) + '</h4>' + (n.body ? '<p>' + SCS.esc(n.body) + '</p>' : '') + '<small>' + SCS.esc(SCS.ago(n.created_at)) + '</small>' +
+            '<div class="scs-nact"><a class="o" href="' + href + '">✅ ' + T('Open & approve', 'খুলে অনুমোদন করুন') + '</a><button type="button" data-snz="' + n.id + '">⏰ ' + T('Remind me later', 'পরে মনে করিয়ে দিন') + '</button></div>' + opts + '</div></div>';
+        }
+        return '<a class="scs-nt' + (n.read_at ? '' : ' new') + '" href="' + href + '"><span class="b"></span><div><h4>' + SCS.esc(n.title) + '</h4>' + (n.body ? '<p>' + SCS.esc(n.body) + '</p>' : '') + '<small>' + SCS.esc(SCS.ago(n.created_at)) + '</small></div></a>';
       }).join('') : '<div class="scs-empty">' + T('No notifications yet.', 'এখনো কোনো নোটিফিকেশন নেই।') + '</div>');
     }
     var s = sheet('🔔 ' + T('Notifications', 'নোটিফিকেশন'), '', true, '<button type="button" data-clear>' + T('Clear all', 'সব মুছুন') + '</button>');
     s.addEventListener('click', function (e) {
       if (e.target.closest('[data-clear]')) { N.clearAll().then(render); }
+      var sz = e.target.closest('[data-snz]');
+      if (sz) { var id = Number(sz.getAttribute('data-snz')); N.snzOpen = N.snzOpen === id ? null : id; render(); }
+      var sv = e.target.closest('[data-snzv]');
+      if (sv) {
+        var pr = sv.getAttribute('data-snzv').split('|'), mins = Number(pr[1]);
+        if (mins < 0) { var t9 = new Date(); t9.setDate(t9.getDate() + 1); t9.setHours(9, 0, 0, 0); mins = Math.max(5, Math.round((t9 - Date.now()) / 60000)); }
+        SCS.q(sb.rpc('scs_notif_snooze', { p_id: Number(pr[0]), p_minutes: mins })).then(function () {
+          N.snzOpen = null; toast('⏰ ' + T('OK — I will remind you if it is still waiting.', 'ঠিক আছে — তখনো বাকি থাকলে আবার মনে করিয়ে দেব।')); render();
+        }).catch(function (er) { alert(SCS.err(er)); });
+      }
       if (e.target.closest('[data-push-on]')) { e.preventDefault(); SCS.push.enable().then(function () { toast(T('Push notifications are on for this device.', 'এই ডিভাইসে পুশ নোটিফিকেশন চালু হয়েছে।')); render(); }).catch(function (er) { alert(SCS.err(er)); }); }
     });
     render();
@@ -687,6 +708,7 @@
       h += '<button type="button" class="it" data-m="notif"><span class="ic">🔔</span>' + T('Notifications', 'নোটিফিকেশন') + (N.unread ? '<span class="cnt">' + N.unread + '</span>' : '') + '</button>';
       if (me.active) h += '<button type="button" class="it" data-m="activity"><span class="ic">🕘</span>' + T('Activity Log', 'অ্যাক্টিভিটি লগ') + '</button>';
       if (opts.appKey && opts.role === 'admin' && opts.onAdmin) h += '<button type="button" class="it" data-m="admin"><span class="ic">🔐</span>' + T('Admin panel', 'অ্যাডমিন প্যানেল') + '</button>';
+      if (opts.appKey && (opts.role === 'admin' || me.isSuper)) h += '<button type="button" class="it" data-m="backup"><span class="ic">💾</span>' + T('Backup · Restore · Reset', 'ব্যাকআপ · রিস্টোর · রিসেট') + '</button>';
       // অ্যাপের নিজের সেটিং/লগ বাটন (উপরে আলাদা আইকন না রেখে এই মেনুতেই)
       (SCS.gearExtras || []).forEach(function (x, i) {
         if (x.show && !x.show()) return;
@@ -733,6 +755,7 @@
         if (k === 'notif') N.open();
         if (k === 'activity') SCS.openActivity(o.appKey || '');
         if (k === 'admin' && o.onAdmin) o.onAdmin();
+        if (k === 'backup') SCS.openBackup(o.appKey || '');
         if (k === 'out') SCS.signOut();
         if (k === 'push') {
           P.isOn().then(function (on) {
@@ -1121,6 +1144,7 @@
 
   SCS._navWatch = function (k) {   // লোকাল টেস্ট মোডের জন্য
     navWatch(k); syncToGear(); libWatch();
+    try { SCS.watchOldBackupUI(); } catch (e) {}
     try { if (!SCS.me) SCS.me = { apps: [], profile: {}, test: true }; mountInHeader(k, 'admin', {}); } catch (e) { console.warn(e); }
   };
 
@@ -1155,6 +1179,7 @@
         try { navWatch(appKey); } catch (e) {}
         try { syncToGear(); } catch (e) {}
         try { libWatch(); SCS.libList().catch(function () {}); } catch (e) {}   // লাইব্রেরি পিকার: সবার জন্য (তালিকা আগেই আনা)
+        try { SCS.watchOldBackupUI(); } catch (e) {}   // অ্যাপের পুরনো ব্যাকআপ/রিস্টোর/রিসেট -> একটাই ব্যবস্থা
         SCS.startNotifications();
         sb.auth.onAuthStateChange(function (ev) { if (ev === 'SIGNED_OUT') location.href = SCS.url('/'); });
         var chain = Promise.resolve();
@@ -1187,6 +1212,104 @@
     var g = SCS.makeGear({ onLang: function () { location.reload(); } });
     slot.appendChild(g);
     SCS.startNotifications();
+  };
+
+  /* ---------------- অ্যাপ খোলার স্ক্রিন ----------------
+   *  অ্যাপগুলোর নিজের পিন-লগইন স্ক্রিন বাদ দেওয়া হয়েছে (SCS অ্যাকাউন্টই লগইন)।
+   *  অ্যাপ চালু হওয়ার সময়টুকু এই স্ক্রিন দেখায়; সমস্যা হলে কারণ আর "আবার চেষ্টা করুন"। */
+  var START = { err: '' };
+  function startCss() {
+    if (document.getElementById('scs-start-css')) return;
+    var s = document.createElement('style'); s.id = 'scs-start-css';
+    s.textContent = '.scs-start{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:#f5f5f7;font-family:"Hind Siliguri","Inter",system-ui,-apple-system,sans-serif;color:#111827;box-sizing:border-box}' +
+      'html.dark .scs-start,body.dark .scs-start{background:#020617;color:#e5e7eb}' +
+      '.scs-start .c{width:100%;max-width:340px;text-align:center}' +
+      '.scs-start img{width:68px;height:68px;object-fit:contain;border-radius:20px;background:#fff;box-shadow:0 12px 32px rgba(15,23,42,.12);padding:9px;box-sizing:border-box}' +
+      '.scs-start b{display:block;margin:14px 0 4px;font-size:17px;font-weight:800;letter-spacing:-.2px}' +
+      '.scs-start p{margin:0;font-size:13px;color:#6b7280}' +
+      '.scs-start .sp{width:30px;height:30px;margin:18px auto 0;border-radius:50%;border:3px solid #fbcfe8;border-top-color:#e91e63;animation:scsSpin .8s linear infinite}' +
+      '@keyframes scsSpin{to{transform:rotate(360deg)}}' +
+      '.scs-start .er{margin:16px 0 0;padding:10px 12px;border-radius:12px;background:#fef2f2;color:#b91c1c;font-size:13px;line-height:1.5;word-break:break-word}' +
+      '.scs-start .bt{display:flex;gap:8px;justify-content:center;margin-top:14px;flex-wrap:wrap}' +
+      '.scs-start .bt a,.scs-start .bt button{border:0;border-radius:12px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer;text-decoration:none;background:#e91e63;color:#fff;font-family:inherit}' +
+      '.scs-start .bt a{background:#e5e7eb;color:#111827}';
+    (document.head || document.documentElement).appendChild(s);
+  }
+  SCS.startHTML = function (err) {
+    startCss();
+    err = err != null && err !== '' ? String(err) : START.err;
+    var name = String(document.title || 'SCS').replace(/\s*[·|–-]\s*SCS.*$/i, '') || 'SCS';
+    var h = '<div class="scs-start" data-scs-start-box><div class="c"><img src="' + SCS.url('/assets/icon-192.png') + '" alt="" /><b>' + SCS.esc(name) + '</b>';
+    if (err) {
+      h += '<p>' + T('The app could not open.', 'অ্যাপটা খোলা গেল না।') + '</p><div class="er">⚠️ ' + SCS.esc(err) + '</div>' +
+        '<div class="bt"><button type="button" onclick="location.reload()">↻ ' + T('Try again', 'আবার চেষ্টা করুন') + '</button><a href="' + SCS.url('/') + '">🏠 ' + T('Home', 'হোম') + '</a></div>';
+    } else {
+      h += '<p>' + T('Opening…', 'খুলছে…') + '</p><div class="sp"></div>';
+    }
+    return h + '</div></div>';
+  };
+  /** HTML এ <div data-scs-start></div> থাকলে সেখানে খোলার স্ক্রিন বসে */
+  SCS.fillStart = function () {
+    document.querySelectorAll('[data-scs-start]').forEach(function (el) { el.innerHTML = SCS.startHTML(); });
+  };
+  SCS.startError = function (msg) {
+    START.err = String(msg || T('Unknown error', 'অজানা সমস্যা'));
+    SCS.fillStart();
+  };
+  /** সেশন হারালে: অ্যাপ নতুন করে খোলা (২০ সেকেন্ডে একবারের বেশি নয় — না হলে কারণ দেখায়) */
+  SCS.reloadApp = function (why) {
+    var k = 'scs_reload_at_' + location.pathname, last = Number(ls(k) || 0);
+    if (Date.now() - last > 20000) { ls(k, String(Date.now())); location.reload(); return; }
+    SCS.startError(why || T('Your session could not be restored.', 'সেশন আবার চালু করা গেল না।'));
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', SCS.fillStart); else SCS.fillStart();
+
+  /* ---------------- অ্যাপগুলোর নিজের পুরনো ব্যাকআপ/রিস্টোর/রিসেট সরানো ----------------
+   *  সব অ্যাপে এখন একটাই ব্যবস্থা (⚙ > ব্যাকআপ · রিস্টোর · রিসেট)। অ্যাপের ভেতরের পুরনো বাটন, ট্যাব আর
+   *  কার্ড DOM থেকে মুছে ফেলা হয় (React অ্যাপে React এর অংশ মোছা যায় না, তাই সেখানে দেখানো বন্ধ)। */
+  var OLD_BK = /\b(back\s?-?ups?|restore|full\s+reset|reset\s+(all|data|everything|app))\b|ব্যাকআপ|রিস্টোর|ডাটা\s*রিসেট|সব\s*রিসেট|রিসেট\s*(করুন|দিন)?$/i;
+  var NOT_BK = /\bpin\b|পিন|filter|ফিল্টার|zoom|password|পাসওয়ার্ড|view|layout|column|কলাম/i;
+  function isReactNode(el) { for (var k in el) if (k.indexOf('__react') === 0) return true; return false; }
+  function dropEl(el) {
+    if (!el || el.closest('.scs-bk,.scs-menu,.scs-sheet,.scs-ui')) return;
+    // খোলা ট্যাবটাই মুছলে পাশের ট্যাব খোলা (না হলে পাতা ফাঁকা দেখায়)
+    var active = /(^|\s)(on|active|sel|selected|current)(\s|$)/.test(String(el.className || '')) || el.getAttribute('aria-selected') === 'true';
+    (SCS._dropped = SCS._dropped || []).push(el.tagName + ': ' + String(el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60));
+    var sib = active && el.parentNode ? [].filter.call(el.parentNode.children, function (x) { return x !== el && x.tagName === el.tagName && x.offsetParent !== null; })[0] : null;
+    if (isReactNode(el) || isReactNode(el.parentNode || {})) el.style.setProperty('display', 'none', 'important'); else el.remove();
+    if (sib) setTimeout(function () { try { sib.click(); } catch (e) {} }, 0);
+  }
+  SCS.dropOldBackupUI = function (root) {
+    root = root || document.body; if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll('#bkCard,.bkcard').forEach(dropEl);
+    root.querySelectorAll('button,a,[role=tab],[data-tab],[data-v],[data-view],[data-act],[data-a],option,li').forEach(function (b) {
+      if (b.closest('.scs-bk,.scs-menu,.scs-sheet,.scs-ui,header .scs-gear')) return;
+      var tx = ((b.textContent || '') + ' ' + (b.getAttribute('title') || '')).replace(/\s+/g, ' ').trim();
+      if (!tx || tx.length > 70 || NOT_BK.test(tx) || !OLD_BK.test(tx)) return;
+      if (b.tagName === 'LI' && b.querySelector('input,select,textarea')) return;
+      dropEl(b);
+    });
+    root.querySelectorAll('h2,h3,h4,legend,summary').forEach(function (h) {
+      var tx = (h.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!tx || tx.length > 80 || NOT_BK.test(tx) || !OLD_BK.test(tx)) return;
+      var box = h.closest('.card,section,fieldset,details,.bksec,.panel,.box') || h.parentNode;
+      if (box && box !== document.body && !box.matches('main,#root,#app,body') && (box.textContent || '').length < 6000) dropEl(box); else dropEl(h);
+    });
+  };
+  function watchOldBackupUI() {
+    var t = null, run = function () { t = null; try { SCS.dropOldBackupUI(); } catch (e) {} };
+    run();
+    try { new MutationObserver(function () { if (!t) t = setTimeout(run, 120); }).observe(document.body, { childList: true, subtree: true }); } catch (e) {}
+  }
+  SCS.watchOldBackupUI = watchOldBackupUI;
+
+  /* ---------------- ব্যাকআপ · রিস্টোর · রিসেট (সব অ্যাপে একই) — assets/scs-backup.js ---------------- */
+  SCS.BACKUP_V = '15';
+  SCS.openBackup = function (appKey) {
+    var go = function () { return window.SCSBackup.open(appKey || ''); };
+    if (window.SCSBackup) return Promise.resolve(go());
+    return SCS.loadScript(SCS.url('/assets/scs-backup.js?v=' + SCS.BACKUP_V)).then(go)
+      .catch(function (e) { alert(T('Could not open Backup: ', 'ব্যাকআপ খোলা গেল না: ') + SCS.err(e)); });
   };
 
   window.SCS = SCS;

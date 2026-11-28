@@ -7,9 +7,9 @@
 <link rel="icon" type="image/png" href="../../assets/icon-192.png" />
 <script src="../../assets/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="../../assets/scs-core.js?v=202611281026"></script>
-<script src="adapter-pre.js?v=202611281026"></script>
-<script src="../../assets/gas/host.js?v=202611281026" data-app="requisition" data-server="adapter.gs"></script>
+<script src="../../assets/scs-core.js?v=202611281315"></script>
+<script src="adapter-pre.js?v=202611281315"></script>
+<script src="../../assets/gas/host.js?v=202611281315" data-app="requisition" data-server="adapter.gs"></script>
 <!-- ============ আসল অ্যাপ (Apps Script Index.html) ============ -->
   <base target="_top">
   <meta charset="UTF-8">
@@ -933,30 +933,8 @@ var ICONS = {"layout-dashboard":"<rect width=\"7\" height=\"9\" x=\"3\" y=\"3\" 
       });
     }
 
-    function renderLoginScreen(container) {
-      container.innerHTML =
-        '<div class="min-h-[100dvh] -mx-2 sm:-mx-3 lg:-mx-4 -my-3 flex flex-col justify-between">' +
-          '<header class="w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-xs px-4 sm:px-8 py-3.5 flex items-center justify-between">' +
-            '<div class="flex items-center gap-3">' +
-              '<div class="w-9 h-9 rounded-xl bg-pink-600 text-white font-black text-sm flex items-center justify-center shadow-md shadow-pink-600/30">SCS</div>' +
-              '<div class="flex flex-col"><span class="font-extrabold text-slate-900 dark:text-slate-100 text-base sm:text-lg leading-tight tracking-tight">SCS Requisition</span><span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Swarup Construction Solution</span></div>' +
-            '</div>' +
-            '<div class="flex items-center gap-2 sm:gap-3">' +
-              '<span class="hidden sm:inline-block text-xs font-semibold text-pink-600 dark:text-pink-400 italic">"Honesty is our Business Capital"</span>' +
-              '<button type="button" onclick="toggleLang()" title="Language / ভাষা" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 active:scale-95 transition-all border border-slate-200 dark:border-slate-700 shadow-xs cursor-pointer">' + ic('globe', 'w-4 h-4 text-pink-600 dark:text-pink-400') + '<span class="lang-label">বাং</span></button>' +
-              '<button type="button" onclick="toggleTheme()" title="Dark / Light" class="flex items-center px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 active:scale-95 transition-all border border-slate-200 dark:border-slate-700 shadow-xs cursor-pointer"><span class="theme-ico inline-flex"></span></button>' +
-            '</div>' +
-          '</header>' +
-          '<div class="flex-1 flex flex-col items-center justify-center p-4">' +
-            loginCardHtml('user') +
-            '<div class="mt-6 text-center text-xs text-slate-400 flex items-center gap-1.5">' + ic('shield-check', 'w-4 h-4 text-emerald-500') + '<span>SCS Enterprise Requisition &amp; Challan Engine</span></div>' +
-          '</div>' +
-          '<footer class="py-4 text-center text-xs text-slate-400 border-t border-slate-200 dark:border-slate-800">© ' + new Date().getFullYear() + ' Swarup Construction Solution (SCS). All Rights Reserved.</footer>' +
-        '</div>';
-      syncPinDots();
-      updateThemeBtns();
-      updateLangBtn();
-    }
+    /* SCS: পিন-লগইন স্ক্রিন বাদ (SCS অ্যাকাউন্টই লগইন) */
+    function renderLoginScreen(container) { container.innerHTML = SCS.startHTML(); }
 
     function renderAdminLoginScreen(container) {
       container.innerHTML =
@@ -4646,5 +4624,5 @@ var ICONS = {"layout-dashboard":"<rect width=\"7\" height=\"9\" x=\"3\" y=\"3\" 
     });
   </script>
 <!-- ============ SCS Management: অ্যাপ-ভিত্তিক সমন্বয় ============ -->
-<script src="adapter.js?v=202611281026"></script></body>
+<script src="adapter.js?v=202611281315"></script></body>
 </html>

@@ -32,7 +32,8 @@ submitRequisition = function (req) {
     var r = typeof req === 'string' ? JSON.parse(req) : (req || {});
     if (res && res.success !== false) {
       SCS_GAS.notify('new_requisition', 'New requisition' + (res.challanNo ? ' · ' + res.challanNo : ''),
-        [r.projectName || r.project || '', r.requestedBy || r.name || '', (r.items && r.items.length ? r.items.length + ' item(s)' : '')].filter(String).join(' · '));
+        [r.projectName || r.project || '', r.requestedBy || r.name || '', (r.items && r.items.length ? r.items.length + ' item(s)' : '')].filter(String).join(' · '), '', null,
+        { kind: 'review', what: 'requisition' + (res.challanNo ? ' ' + res.challanNo : '') });
     }
   } catch (e) {}
   return res;

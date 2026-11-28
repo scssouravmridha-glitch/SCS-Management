@@ -7,9 +7,9 @@
 <link rel="icon" type="image/png" href="../../assets/icon-192.png" />
 <script src="../../assets/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="../../assets/scs-core.js?v=202611281026"></script>
-<script src="adapter-pre.js?v=202611281026"></script>
-<script src="../../assets/gas/host.js?v=202611281026" data-app="worker-attendance" data-server="adapter.gs"></script>
+<script src="../../assets/scs-core.js?v=202611281315"></script>
+<script src="adapter-pre.js?v=202611281315"></script>
+<script src="../../assets/gas/host.js?v=202611281315" data-app="worker-attendance" data-server="adapter.gs"></script>
 <!-- ============ আসল অ্যাপ (Apps Script Index.html) ============ -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -831,7 +831,7 @@ const head=`<header class="w-full bg-white dark:bg-slate-900 border-b border-sla
 const card=(icon,title,sub,body,tone='pink')=>`<div class="flex-1 flex flex-col items-center justify-center p-4"><div class="w-full max-w-sm rounded-3xl p-6 md:p-8 shadow-2xl border transition-all duration-300 bg-white/95 dark:bg-slate-900/95 border-slate-200/80 dark:border-slate-800 backdrop-blur-xl"><div class="flex flex-col items-center mb-6"><div class="w-14 h-14 rounded-2xl ${tone=='rose'?'bg-rose-100 dark:bg-rose-950/60 text-rose-600':'bg-pink-100 dark:bg-pink-950/60 text-pink-600 dark:text-pink-400'} flex items-center justify-center mb-3 shadow-inner">${ic(icon,'w-7 h-7')}</div><h2 class="text-lg font-bold text-slate-900 dark:text-slate-100 text-center">${title}</h2><p class="text-xs text-slate-400 mt-1 text-center">${sub}</p></div>${body}</div>
 <div class="mt-6 text-center text-xs text-slate-400 flex items-center gap-1.5">${ic('shield','w-4 h-4 text-emerald-500')}<span>${B('SCS লেবার হাজিরা ও মজুরি ইঞ্জিন','SCS Worker Attendance & Wage Engine')}</span></div></div>`;
 const wrap=b=>`<div class="min-h-screen flex flex-col justify-between transition-colors duration-200 ${S.theme=='dark'?'bg-slate-950 text-slate-100':'bg-slate-100 text-slate-800'}">${head}${b}<footer class="py-4 text-center text-xs text-slate-400 border-t border-slate-200 dark:border-slate-800">© ${new Date().getFullYear()} ${COMPANY} (SCS). All Rights Reserved.</footer></div>`;
-if(sc=='gate')return wrap(card('lock',B('পিন দিন','Enter PIN'),B('ইউজার পিন অথবা এডমিন পিন দিয়ে প্রবেশ করুন','Enter with the user PIN or the admin PIN'),keypad('pw','doLogin',B('প্রবেশ করুন','Authorize & Enter'))+`<p class="text-[11px] text-slate-400 mt-4 text-center">${t('adminOnly')}</p>`));
+if(sc=='gate')return SCS.startHTML();
 if(sc=='vpin')return wrap(card('lock',t('visLogin'),t('visPinAsk'),keypad('vpw','vLogin',B('প্রবেশ করুন','Enter'))));
 return wrap(card('alert',t('visDeny'),t('visDenyHint'),'','rose'))}
 
@@ -1293,7 +1293,7 @@ if(S.modal&&S.modal.t=='bulk')bkTotals();
 if(fk){const[a,b]=fk.split(':');const el=document.querySelector(`[data-${a}="${b}"]`);if(el&&el.type!='radio'&&el.type!='checkbox'){el.focus();if(sel)try{el.setSelectionRange(sel[0],sel[1])}catch(e){}}}}
 function bkTotals(){const Bk=S.bulk;if(!Bk)return;const rows=bulkRows(Bk.month);let n=0,tot=0;rows.forEach(r=>{if(Bk.off[r.id])return;const a=Math.round(+(Bk.amt[r.id]??r.due));if(a>0){n++;tot+=a}});
 const c=document.getElementById('bkcnt'),e=document.getElementById('bktot');if(c)c.textContent=n+' '+t('selCnt');if(e)e.textContent=tk(tot)}
-function toGate(){S.admin=false;S.aul=false;S.f.apw='';S.token='';S.draft={};S.ws=[];S.att=[];S.tx=[];S.am={};S.modal=null;S.sp=null;S.tab='dash';S.vset=null;S.aset=null;S.ab=null;S.logs=null;S.screen='gate';S.f={pw:''}}
+function toGate(){if(window.SCS&&SCS.reloadApp&&S.mode=='admin'){SCS.reloadApp();return}S.admin=false;S.aul=false;S.f.apw='';S.token='';S.draft={};S.ws=[];S.att=[];S.tx=[];S.am={};S.modal=null;S.sp=null;S.tab='dash';S.vset=null;S.aset=null;S.ab=null;S.logs=null;S.screen='gate';S.f={pw:''}}
 async function boot(){if(S.mode=='admin'){S.admin=true;S.token='scs-session';S.screen='app';S.loading=true;render();load();return}
 let st;try{st=await run('visitorStatus',BOOT.v)}catch(e){S.screen='deny';render();toast(t('connErr'),1);return}
 if(!st||!st.ok){S.screen='deny';render();return}

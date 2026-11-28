@@ -79,8 +79,11 @@ submitLeaveApplication = function (payload) {
   var res = __scsLeaveSubmit.apply(this, arguments);
   if (res && res.ok) {
     var emp = findEmployeeById_(payload.employeeId) || { name: payload.employeeId };
+    // কাজের নোটিফিকেশন: Admin "পরে মনে করিয়ে দিন" চাপলে, আবেদন তখনো Pending থাকলে ভদ্রভাবে আবার মনে করানো হয়
+    var mine = getApplications_().filter(function (x) { return String(x.employeeId) === String(payload.employeeId) && x.fromDate === payload.fromDate && x.toDate === payload.toDate; }).pop();
     SCS_GAS.notify('new_application', 'New leave application · ' + emp.name,
-      (Number(payload.totalDays) || 0) + ' day(s): ' + payload.fromDate + ' → ' + payload.toDate + (payload.leaveType ? ' · ' + payload.leaveType : ''));
+      (Number(payload.totalDays) || 0) + ' day(s): ' + payload.fromDate + ' → ' + payload.toDate + (payload.leaveType ? ' · ' + payload.leaveType : ''), '', null,
+      mine ? { kind: 'approve', what: 'leave application of ' + emp.name, sheet: 'Leave Applications', key: mine.applicationId, key_col: 1, status_col: 12, pending: 'Pending' } : { kind: 'approve', what: 'leave application of ' + emp.name });
   }
   return res;
 };

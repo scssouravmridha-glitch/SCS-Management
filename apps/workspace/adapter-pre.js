@@ -7,6 +7,5 @@
     if (!cur || cur.p !== 'scs-account') localStorage.setItem(P + 'sess', btoa(unescape(encodeURIComponent(JSON.stringify({ p: 'scs-account' })))));
     if (!localStorage.getItem(P + 'lang')) localStorage.setItem(P + 'lang', 'en');
   } catch (e) {}
-  var s = document.createElement('style'); s.textContent = '#login{visibility:hidden}'; document.head.appendChild(s);
-  setTimeout(function () { s.textContent = ''; }, 6000);   // কোনো কারণে ঢুকতে না পারলে ৬ সেকেন্ড পর লগইন স্ক্রিন দেখায়
+  // পিন-লগইন স্ক্রিন বিল্ডের সময়ই বাদ (patches.json); খোলার সময় SCS এর খোলার স্ক্রিন দেখায়
 })();

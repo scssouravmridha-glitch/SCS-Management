@@ -1,3 +1,7 @@
 [
-  { "find": "ACT['logout'] = function () {", "replace": "ACT['logout'] = function () { if (window.SCS && SCS.signOut) { SCS.signOut(); return; }" }
+  { "find": "ACT['logout'] = function () {", "replace": "ACT['logout'] = function () { if (window.SCS && SCS.signOut) { SCS.signOut(); return; }" },
+  { "rx": "function loginHTML\\(\\) \\{.*?All Rights Reserved\\.</span></footer></div>';\\s*\\}", "replace": "/* SCS: পিন-লগইন স্ক্রিন বাদ (SCS অ্যাকাউন্টই লগইন) — অ্যাপ খোলার সময় শুধু খোলার স্ক্রিন */\nfunction loginHTML() { return SCS.startHTML(S.loginError); }" },
+  { "rx": "function pinPress\\(d\\) \\{.*?\\nfunction doLogin\\(\\) \\{.*?\\n  \\}\\);\\n\\}", "replace": "function doLogin() {}" },
+  { "find": "}).catch(function () { busy(false); S.token = ''; LS.del('scs_store_token'); render(); });", "replace": "}).catch(function (e) { busy(false); S.loginError = (e && e.message) || String(e); render(); });" },
+  { "find": "function sessionLost() {", "replace": "function sessionLost() { if (window.SCS && SCS.reloadApp) { SCS.reloadApp(); return; }" }
 ]

@@ -133,7 +133,7 @@ function authLost() {
   if (S.adminOn && S.userToken) { lockAdmin(false); return; }
   sessionLost();
 }
-function sessionLost() {
+function sessionLost() { if (window.SCS && SCS.reloadApp) { SCS.reloadApp(); return; }
   if (!S.token) return;
   S.adminOn = false; S.userToken = ''; S.userBoot = null; CACHE = {};
   S.token = ''; S.boot = null; LS.del('scs_store_token');
@@ -508,59 +508,9 @@ function openProductHistory(pid) {
 }
 
 /* ---------- LOGIN (same as Report App PinLogin) ---------- */
-function loginHTML() {
-  var dark = S.theme === 'dark', n = pinMax();
-  var dots = '';
-  for (var i = 0; i < n; i++) dots += '<div class="w-4 h-4 rounded-full transition-all duration-200 ' + (S.pin.length > i ? 'bg-pink-600 scale-125 shadow-md shadow-pink-500/50' : 'bg-slate-200 dark:bg-slate-700') + '"></div>';
-  var key = function (d) { return '<button type="button" data-act="pin-key" data-k="' + d + '" class="h-14 rounded-2xl text-xl font-bold bg-slate-100/90 hover:bg-pink-50 hover:text-pink-600 active:scale-95 dark:bg-slate-800 dark:hover:bg-slate-700/80 dark:hover:text-pink-400 transition-all duration-150 flex items-center justify-center shadow-xs cursor-pointer">' + d + '</button>'; };
-  return '<div class="min-h-screen flex flex-col justify-between transition-colors duration-200 ' + (dark ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-800') + '">' +
-    '<header class="w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-xs px-4 sm:px-8 py-3.5 flex items-center justify-between">' +
-    '<div class="flex items-center gap-3"><div class="w-9 h-9 rounded-xl bg-pink-600 text-white font-black text-sm flex items-center justify-center shadow-md shadow-pink-600/30">SCS</div>' +
-    '<div class="flex flex-col"><span class="font-extrabold text-slate-900 dark:text-slate-100 text-base sm:text-lg leading-tight tracking-tight">' + esc(storeName()) + '</span>' +
-    '<span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Swarup Construction Solution</span></div></div>' +
-    '<div class="flex items-center gap-3"><span class="hidden sm:inline-block text-xs font-semibold text-pink-600 dark:text-pink-400 italic">"Honesty is our Business Capital"</span>' +
-    '<button type="button" data-act="lang" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 active:scale-95 transition-all border border-slate-200 dark:border-slate-700 shadow-xs cursor-pointer">' +
-    ic('globe', 'w-4 h-4 text-pink-600 dark:text-pink-400') + '<span>' + (S.lang === 'bn' ? 'বাংলা' : 'EN') + '</span></button></div></header>' +
-    '<div class="flex-1 flex flex-col items-center justify-center p-4">' +
-    '<div id="pin-card" class="w-full max-w-sm rounded-3xl p-6 md:p-8 shadow-2xl border transition-all duration-300 ' + (dark ? 'bg-slate-900/95 border-slate-800 backdrop-blur-xl' : 'bg-white/95 border-slate-200/80 backdrop-blur-xl') + (S.pinShake ? ' animate-bounce border-red-500' : '') + '">' +
-    '<div class="flex flex-col items-center mb-6"><div class="w-14 h-14 rounded-2xl bg-pink-100 dark:bg-pink-950/60 text-pink-600 dark:text-pink-400 flex items-center justify-center mb-3 shadow-inner">' + ic('lock', 'w-7 h-7') + '</div>' +
-    '<h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">' + L('Enter Security PIN', 'নিরাপদ পিন প্রবেশ করুন') + '</h2>' +
-    '<p class="text-xs text-slate-400 mt-1 text-center">' + L('Enter your personal PIN (4–8 digits)', 'আপনার ব্যক্তিগত পিন দিন (৪–৮ ডিজিট)') + '</p></div>' +
-    '<div class="flex justify-center items-center gap-3 mb-6 h-9">' + dots + '</div>' +
-    '<div class="grid grid-cols-3 gap-3 mb-4">' + ['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(key).join('') +
-    '<button type="button" data-act="pin-clear" class="h-14 rounded-2xl text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 active:scale-95 bg-slate-100/60 dark:bg-slate-800/40 transition-all flex items-center justify-center cursor-pointer">CLEAR</button>' +
-    key('0') +
-    '<button type="button" data-act="pin-back" class="h-14 rounded-2xl text-slate-600 hover:text-rose-600 active:scale-95 bg-slate-100/60 dark:bg-slate-800/40 dark:text-slate-300 dark:hover:text-rose-400 transition-all flex items-center justify-center cursor-pointer">' + ic('delete', 'w-5 h-5') + '</button></div>' +
-    '<button type="button" data-act="pin-submit" ' + (S.pin.length < 4 || S.pinBusy ? 'disabled' : '') + ' class="w-full py-3.5 px-4 rounded-2xl bg-pink-600 hover:bg-pink-700 active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none text-white font-semibold shadow-lg shadow-pink-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer">' +
-    '<span>' + (S.pinBusy ? L('Checking...', 'যাচাই হচ্ছে...') : L('Authorize & Enter', 'লগইন করুন')) + '</span>' + ic('arrow-right', 'w-4 h-4') + '</button>' +
-    (S.loginError ? '<p class="mt-3 text-center text-xs font-semibold text-rose-600">' + esc(S.loginError) + '</p>' : '') +
-    '</div><div class="mt-6 flex items-center gap-2 text-xs text-slate-400 font-medium">' + ic('shield-check', 'w-4 h-4 text-emerald-500') + '<span>SCS Enterprise Store & Inventory Engine</span></div></div>' +
-    '<footer class="w-full border-t border-slate-200 dark:border-slate-800 py-3 text-center text-xs text-slate-400"><span>© ' + localToday().slice(0, 4) + ' Swarup Construction Solution (SCS). All Rights Reserved.</span></footer></div>';
-}
-function pinPress(d) {
-  if (S.pinBusy || S.pin.length >= pinMax()) return;
-  S.pin += d; S.loginError = '';
-  render();
-  if (S.pin.length === pinMax()) setTimeout(doLogin, 60);
-}
-ACT['pin-key'] = function (el) { pinPress(el.getAttribute('data-k')); };
-ACT['pin-clear'] = function () { if (!S.pinBusy) { S.pin = ''; render(); } };
-ACT['pin-back'] = function () { if (!S.pinBusy) { S.pin = S.pin.slice(0, -1); render(); } };
-ACT['pin-submit'] = function () { doLogin(); };
-function doLogin() {
-  if (S.pinBusy || S.pin.length < 4) return;
-  S.pinBusy = true; render();
-  api('login', { pin: S.pin }, { silent: true }).then(function (r) {
-    S.pinBusy = false; S.pin = ''; S.token = r.token; LS.set('scs_store_token', r.token);
-    setBoot(r.boot);
-    if (!S.month) S.month = today().slice(0, 7);
-    go(S.view || 'dashboard');
-    toast(L('Welcome, ', 'স্বাগতম, ') + r.boot.user.name + '!', 'success');
-  }).catch(function (e) {
-    S.pinBusy = false; S.pin = ''; S.loginError = e.message; S.pinShake = true; render();
-    setTimeout(function () { S.pinShake = false; render(); }, 500);
-  });
-}
+/* SCS: পিন-লগইন স্ক্রিন বাদ (SCS অ্যাকাউন্টই লগইন) — অ্যাপ খোলার সময় শুধু খোলার স্ক্রিন */
+function loginHTML() { return SCS.startHTML(S.loginError); }
+function doLogin() {}
 
 /* ---------- TOP BAR (pink, narrow) ---------- */
 function topbarHTML() {
@@ -793,7 +743,7 @@ function start() {
       if (S.view === 'admin' || S.view === 'ledger') S.view = S.view === 'ledger' ? 'history' : 'dashboard';
       go(S.view);
       setTimeout(prefetch, 400);
-    }).catch(function () { busy(false); S.token = ''; LS.del('scs_store_token'); render(); });
+    }).catch(function (e) { busy(false); S.loginError = (e && e.message) || String(e); render(); });
   }
 }
 
