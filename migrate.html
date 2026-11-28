@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Data Migration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/portal.css" />
+</head>
+<body>
+<header class="top">
+  <div class="in">
+    <a class="logo" href="./"><span class="mk"><img data-scs-logo alt="SCS" /></span><span><b>Data Migration</b><small>Google Sheets → Supabase</small></span></a>
+    <div class="act"><a class="chip" href="admin.html">🛡️ <span class="hide-sm">Admin Console</span></a></div>
+  </div>
+</header>
+<main class="wrap" style="max-width:860px">
+  <h1 class="h1">পুরনো অ্যাপ থেকে ডাটা আনা (JSON)</h1>
+  <p class="sub">একবারই করতে হবে। শুধু Super Admin।</p>
+
+  <div class="card pad" style="margin-bottom:14px">
+    <h3 style="margin-top:0">📦 অ্যাপের নিজের JSON ব্যাকআপ থেকে আনা (সবচেয়ে নিরাপদ)</h3>
+    <p class="small" style="font-size:14px;line-height:1.7">
+      পুরনো Apps Script অ্যাপ থেকে যে JSON ব্যাকআপ ডাউনলোড হয়, নতুন অ্যাপের <b>একই জায়গায় Restore</b> দিলে সব ডাটা হুবহু চলে আসে। কোনো ডাটা হারায় না।<br>
+      <b>🧪 Chemical Order:</b> পুরনো অ্যাপে Admin → Backup &amp; Restore → <i>Lifetime</i> ব্যাকআপ ডাউনলোড → নতুন অ্যাপে একই জায়গায় <i>Restore from JSON</i>।<br>
+      <b>📊 Monthly Report:</b> পুরনো অ্যাপের Admin → Backup থেকে সম্পূর্ণ ব্যাকআপ (JSON) → নতুন অ্যাপে একই জায়গায় Restore।<br>
+      <b>🕘 Employee Attendance:</b> পুরনো অ্যাপে Admin → Backup → <i>লাইফটাইম</i> এক্সপোর্ট → নতুন অ্যাপে Admin → Backup → Restore (<i>Full replace</i>)। তারপর অ্যাপটা একবার খুললেই Report-এ মাসিক সামারি চলে যায়।<br>
+      <b>🌴 Leave Application:</b> পুরনো অ্যাপে Admin → Backup → <i>Lifetime</i> → নতুন অ্যাপে Admin → Backup → Restore (<i>Replace</i>)।<br>
+      <span style="color:#b45309">পিন অ্যাপের ভেতরে থাকে না: সব অ্যাপের অ্যাডমিন পিন Admin Console → Apps &amp; admin PINs থেকে।</span>
+    </p>
+  </div>
+</main>
+
+<script src="assets/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/scs-core.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var sb = SCS.sb;
+
+  function parseCsv(text) {
+    var rows = [], row = [], f = '', q = false;
+    text = text.replace(/^﻿/, '');
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+      else if (c === '"') q = true;
+      else if (c === ',') { row.push(f); f = ''; }
+      else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+      else f += c;
+    }
+    if (f !== '' || row.length) { row.push(f); rows.push(row); }
+    return rows.filter(function (r) { return r.some(function (x) { return String(x).trim() !== ''; }); });
+  }
+  function readFile(inp) {
+    var f = inp.files[0];
+    if (!f) return Promise.resolve(null);
+    return f.text().then(parseCsv);
+  }
+  function col(h, names, def) {
+    var lo = h.map(function (x) { return String(x).trim().toLowerCase().replace(/\s+/g, ''); });
+    for (var i = 0; i < names.length; i++) { var k = lo.indexOf(names[i]); if (k > -1) return k; }
+    return def;
+  }
+  function normDate(v) {
+    v = String(v || '').trim();
+    var m = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if (m) return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2);
+    m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if (m) return m[3] + '-' + ('0' + m[1]).slice(-2) + '-' + ('0' + m[2]).slice(-2);
+    return v;
+  }
+  function chunks(list, n, fn) {
+    var p = Promise.resolve();
+    for (var i = 0; i < list.length; i += n) (function (part) { p = p.then(function () { return fn(part); }); })(list.slice(i, i + n));
+    return p;
+  }
+
+  SCS.applyLogo(); SCS.loadBranding();
+
+  SCS.loadMe().then(function (me) {
+    if (!me) { location.href = SCS.url('/') + '?next=' + encodeURIComponent(SCS.url('/migrate.html')); return; }
+    if (me.isSuper) { SCS.role = 'admin'; window.SCS_ROLE = 'admin'; SCS.adminUnlocked = true; }
+    if (!me.isSuper) { document.querySelector('main').innerHTML = '<div class="empty">শুধু Super Admin এই পেজ ব্যবহার করতে পারবেন।</div>'; }
+  });
+})();
+</script>
+</body>
+</html>

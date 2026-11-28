@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>My Profile · SCS</title>
+<link rel="icon" type="image/png" href="assets/icon-192.png" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/portal.css" />
+</head>
+<body>
+<div class="bg-art" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span><span class="dots"></span><span class="glow"></span><span class="ring r1"></span><span class="ring r2"></span><img data-scs-logo alt="" /></div>
+<header class="top">
+  <div class="in">
+    <a class="logo" href="./"><span class="mk"><img data-scs-logo alt="SCS" /></span><span><b data-i="My Profile|আমার প্রোফাইল"></b><small>SCS Management</small></span></a>
+    <div class="act" id="topAct"><a class="chip" href="./">🏠 <span class="hide-sm" data-i="Home|হোম"></span></a></div>
+  </div>
+</header>
+
+<main class="wrap" style="max-width:820px">
+  <div id="banner"></div>
+  <div id="body"><div class="spin"></div></div>
+</main>
+<div id="toast" class="toast hidden"></div>
+<input type="file" id="fPhoto" accept="image/*" class="hidden" />
+<input type="file" id="fDoc" accept="image/*,application/pdf" class="hidden" />
+
+<script src="assets/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/scs-core.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var T = SCS.t, esc = SCS.esc, sb = SCS.sb;
+  var st = { me: null, docs: [], urls: {}, photo: '', docKind: '' };
+  var tt = null;
+  function toast(t) { var e = $('toast'); e.textContent = t; e.classList.remove('hidden'); clearTimeout(tt); tt = setTimeout(function () { e.classList.add('hidden'); }, 3000); }
+  SCS.applyI18n(); SCS.applyLogo();
+  if (!SCS.configured) { location.href = SCS.url('/'); return; }
+  SCS.loadBranding();
+  var next = new URLSearchParams(location.search).get('next');
+  if (next && !/^\/[^/]/.test(next)) next = null;
+
+  var KIND = {
+    nid_front: T('NID — front side', 'এনআইডি — সামনের পাতা'),
+    nid_back: T('NID — back side', 'এনআইডি — পেছনের পাতা'),
+    certificate: T('Certificate', 'সনদপত্র'),
+    other: T('Other', 'অন্যান্য')
+  };
+
+  function render() {
+    var me = st.me, p = me.profile;
+    var nidF = st.docs.filter(function (d) { return d.kind === 'nid_front'; })[0];
+    var nidB = st.docs.filter(function (d) { return d.kind === 'nid_back'; })[0];
+    var certs = st.docs.filter(function (d) { return d.kind === 'certificate' || d.kind === 'other'; });
+    var photo = st.photo || p.photo_url;
+    $('body').innerHTML =
+      '<div class="card pad sec">' +
+        '<h2 class="h2">' + T('Personal information', 'ব্যক্তিগত তথ্য') + '</h2>' +
+        '<div class="photo-up" style="margin-bottom:18px">' +
+          (photo ? '<img class="ph" src="' + esc(photo) + '" alt="" />' : '<div class="ph">👤</div>') +
+          '<div><button type="button" class="btn g s" id="pickPhoto">📷 ' + (photo ? T('Change photo', 'ছবি বদলান') : T('Upload photo', 'ছবি আপলোড করুন')) + '</button>' +
+          '<div class="small" style="margin-top:6px">' + T('Required. A clear photo of your face.', 'বাধ্যতামূলক। মুখের পরিষ্কার ছবি।') + '</div></div>' +
+        '</div>' +
+        '<div class="row2">' +
+          '<div class="field"><label class="l">' + T('Full name', 'পূর্ণ নাম') + ' <span class="req">*</span></label><input class="in-f" id="pName" value="' + esc(p.full_name || '') + '" /></div>' +
+          '<div class="field"><label class="l">' + T('Mobile number', 'মোবাইল নম্বর') + ' <span class="req">*</span></label>' +
+            (p.phone ? '<input class="in-f" id="pPhone" readonly value="' + esc(p.phone) + '" />' + reqLine('phone')
+                     : '<input class="in-f" id="pPhone" inputmode="tel" placeholder="01XXXXXXXXX" value="" />') + '</div>' +
+        '</div>' +
+        '<div class="row2">' +
+          '<div class="field"><label class="l">' + T('Email', 'ইমেইল') + '</label><input class="in-f" readonly value="' + esc(me.email) + '" />' + reqLine('email') + '</div>' +
+          '<div class="field"><label class="l">' + T('Employee ID', 'এমপ্লয়ি আইডি') + '</label><input class="in-f" id="pEmp" readonly value="' + esc(p.employee_id || '') + '" placeholder="' + T('Set by the admin', 'অ্যাডমিন দেবেন') + '" />' +
+            '<div class="small" style="margin-top:4px">' + T('Only the Super Admin can set or change the Employee ID.', 'Employee ID শুধু Super Admin দিতে বা বদলাতে পারেন।') + '</div></div>' +
+        '</div>' +
+        // পদবি ও বিভাগ দেখা যায়, বদলান শুধু Super Admin
+        '<div class="row2"><div class="field"><label class="l">' + T('Designation', 'পদবি') + '</label><input class="in-f" readonly value="' + esc(p.designation || '') + '" placeholder="' + T('Set by the admin', 'অ্যাডমিন দেবেন') + '" /></div>' +
+        '<div class="field"><label class="l">' + T('Department', 'বিভাগ') + '</label><input class="in-f" readonly value="' + esc(p.department || '') + '" placeholder="' + T('Set by the admin', 'অ্যাডমিন দেবেন') + '" /></div></div>' +
+        '<p class="small" style="margin:0 0 14px">' + T('Your name and photo are shown in Employee Attendance and all other SCS apps.', 'এই নাম ও ছবিই Employee Attendance সহ সব SCS অ্যাপে দেখাবে।') + '</p>' +
+        '<button type="button" class="btn p" id="save">' + T('Save profile', 'প্রোফাইল সেভ করুন') + '</button>' +
+      '</div>' +
+
+      '<div class="card pad sec">' +
+        '<h2 class="h2">' + T('National ID (NID)', 'জাতীয় পরিচয়পত্র (NID)') + ' <small>· ' + T('optional', 'ঐচ্ছিক') + '</small></h2>' +
+        '<div class="docs">' + docBox(nidF, 'nid_front') + docBox(nidB, 'nid_back') + '</div>' +
+      '</div>' +
+
+      '<div class="card pad sec">' +
+        '<h2 class="h2">' + T('Educational certificates', 'শিক্ষাগত যোগ্যতার সনদপত্র') + ' <small>· ' + T('optional', 'ঐচ্ছিক') + '</small></h2>' +
+        '<div class="docs">' + certs.map(function (d) { return docBox(d, d.kind); }).join('') +
+          '<div class="doc add" data-add="certificate">＋<br>' + T('Add certificate', 'সনদপত্র যোগ করুন') + '</div></div>' +
+        '<p class="small" style="margin:10px 0 0">' + T('Photo (JPG/PNG) or PDF, up to 10 MB each. Only you and the Super Admin can see these documents.', 'ছবি (JPG/PNG) বা PDF, প্রতিটি সর্বোচ্চ ১০ MB। এই ডকুমেন্টগুলো শুধু আপনি ও Super Admin দেখতে পারবেন।') + '</p>' +
+      '</div>' +
+
+      '<div class="card pad sec" id="passCard"' + (p.must_change_pw ? ' style="border:2px solid #e91e63"' : '') + '>' +
+        '<h2 class="h2">' + T('Change password', 'পাসওয়ার্ড বদলান') + '</h2>' +
+        (p.must_change_pw ? '<div class="msg info" style="margin-bottom:10px">🔐 ' + T('The admin reset your password. Please set your own new password now.', 'অ্যাডমিন আপনার পাসওয়ার্ড রিসেট করেছেন। এখনই নিজের নতুন পাসওয়ার্ড দিন।') + '</div>'
+          : '<div class="field"><label class="l">' + T('Current password', 'বর্তমান পাসওয়ার্ড') + '</label><input class="in-f" type="password" id="np0" autocomplete="current-password" /></div>') +
+        '<div class="row2"><div class="field"><label class="l">' + T('New password', 'নতুন পাসওয়ার্ড') + '</label><input class="in-f" type="password" id="np1" minlength="8" autocomplete="new-password" /></div>' +
+        '<div class="field"><label class="l">' + T('Confirm', 'আবার দিন') + '</label><input class="in-f" type="password" id="np2" minlength="8" autocomplete="new-password" /></div></div>' +
+        '<button type="button" class="btn g" id="savePass">' + T('Update password', 'পাসওয়ার্ড আপডেট') + '</button>' +
+      '</div>' +
+
+      '<div class="card pad sec">' +
+        '<h2 class="h2">🔔 ' + T('My notifications', 'আমার নোটিফিকেশন') + '</h2>' +
+        '<p class="small" style="margin:0 0 10px">' + T('Choose which notifications you want. Security alerts always come.', 'কোন নোটিফিকেশন পেতে চান বেছে নিন। নিরাপত্তার সতর্কতা সবসময় আসবে।') + '</p>' +
+        '<div id="nfList"><div class="small">…</div></div>' +
+      '</div>';
+    st.docs.forEach(function (d) { if (/^image\//.test(d.mime) && !st.urls[d.id]) loadThumb(d); });
+    loadNotifPrefs();
+    if (p.must_change_pw) setTimeout(function () { var c = $('passCard'); if (c) c.scrollIntoView({ block: 'center' }); }, 200);
+  }
+  /* মোবাইল / ইমেইল বদলের অনুরোধ (Super Admin অনুমোদন দেন) */
+  function reqLine(field) {
+    var r = (st.reqs || []).filter(function (x) { return x.field === field && x.status === 'pending'; })[0];
+    if (r) return '<div class="small" style="margin-top:4px;color:#b45309">⏳ ' + T('Change to ', 'বদলের অনুরোধ: ') + esc(r.new_value) + T(' — waiting for admin approval', ' — অ্যাডমিনের অনুমোদনের অপেক্ষায়') + '</div>';
+    return '<button type="button" class="link" data-reqchange="' + field + '" style="font-size:12.5px;margin-top:4px">✏️ ' + (field === 'phone' ? T('Request mobile change', 'মোবাইল বদলের অনুরোধ') : T('Request email change', 'ইমেইল বদলের অনুরোধ')) + '</button>';
+  }
+  /* নোটিফিকেশন পছন্দ */
+  function loadNotifPrefs() {
+    var me = st.me, mine = {};
+    (me.apps || []).forEach(function (a) { if (SCS.roleFor(me, a.key)) mine[a.key] = 1; });
+    Promise.all([SCS.q(sb.from('notif_rules').select('*').eq('enabled', true).order('sort_order')), SCS.q(sb.from('notif_prefs').select('*').eq('user_id', me.id))]).then(function (r) {
+      var pref = {}; (r[1] || []).forEach(function (x) { pref[x.event_key] = x; });
+      var rules = (r[0] || []).filter(function (x) {
+        if (x.app_key === 'core') return x.audience !== 'super_admins' || me.isSuper;
+        return mine[x.app_key];
+      });
+      var always = { 'core.password_changed': 1, 'core.account_approved': 1 };
+      $('nfList').innerHTML = rules.length ? rules.map(function (x) {
+        var p = pref[x.event_key] || {}, on = p.enabled !== false && !p.admin_off, lock = always[x.event_key] || p.admin_off;
+        return '<label class="switch" style="display:flex;margin:6px 0' + (lock ? ';opacity:.6' : '') + '"><input type="checkbox" data-nf="' + esc(x.event_key) + '"' + (on ? ' checked' : '') + (lock ? ' disabled' : '') + ' /> ' +
+          esc(SCS.lang === 'bn' && x.label_bn ? x.label_bn : x.label) + (p.admin_off ? ' <span class="small">(' + T('turned off by admin', 'অ্যাডমিন বন্ধ করেছেন') + ')</span>' : always[x.event_key] ? ' <span class="small">(' + T('always on', 'সবসময় চালু') + ')</span>' : '') + '</label>';
+      }).join('') : '<div class="small">' + T('No notifications for your apps.', 'আপনার অ্যাপের কোনো নোটিফিকেশন নেই।') + '</div>';
+    }).catch(function (e) { $('nfList').innerHTML = '<div class="small">' + esc(SCS.err(e)) + '</div>'; });
+  }
+  document.addEventListener('change', function (e) {
+    var c = e.target.closest('[data-nf]'); if (!c) return;
+    SCS.q(sb.from('notif_prefs').upsert({ user_id: st.me.id, event_key: c.getAttribute('data-nf'), enabled: c.checked }))
+      .then(function () { toast(c.checked ? T('Turned on', 'চালু হয়েছে') : T('Turned off', 'বন্ধ হয়েছে')); }, function (er) { c.checked = !c.checked; toast(SCS.err(er)); });
+  });
+  function docBox(d, kind) {
+    if (!d) return '<div class="doc add" data-add="' + kind + '">＋<br>' + esc(KIND[kind]) + '</div>';
+    var th = st.urls[d.id] ? 'style="background-image:url(\'' + st.urls[d.id] + '\')"' : '';
+    // ইউজার খুলতে ও ডাউনলোড করতে পারে; মুছতে পারেন শুধু Super Admin
+    return '<div class="doc"><div class="th" ' + th + ' data-thumb="' + d.id + '">' + (/pdf/.test(d.mime) ? '📄' : (st.urls[d.id] ? '' : '🖼️')) + '</div>' +
+      '<b>' + esc(d.title || KIND[d.kind]) + '</b><div style="display:flex;gap:10px"><button type="button" class="link" data-open="' + d.id + '" style="text-align:left;font-size:12px">' + T('Open', 'খুলুন') + '</button>' +
+      '<button type="button" class="link" data-dl="' + d.id + '" style="text-align:left;font-size:12px">⬇ ' + T('Download', 'ডাউনলোড') + '</button></div>' +
+      (st.me.isSuper ? '<button type="button" class="x" data-del="' + d.id + '" title="' + T('Remove', 'মুছুন') + '">✕</button>' : '') + '</div>';
+  }
+  function loadThumb(d) {
+    SCS.signedUrl(d.path, 3600).then(function (u) {
+      st.urls[d.id] = u;
+      var el = document.querySelector('[data-thumb="' + d.id + '"]');
+      if (el) { el.style.backgroundImage = 'url(\'' + u + '\')'; el.textContent = ''; }
+    }).catch(function () {});
+  }
+
+  function load() {
+    return SCS.loadMe().then(function (me) {
+      if (!me) { location.href = SCS.url('/') + '?next=' + encodeURIComponent(SCS.url('/profile.html')); return; }
+      st.me = me;
+      $('topAct').innerHTML = '<a class="chip" href="' + esc(next || '/') + '">🏠 <span class="hide-sm">' + T('Home', 'হোম') + '</span></a>';
+      SCS.portalHeader(me, $('topAct'));
+      if (!me.complete) $('banner').innerHTML = '<div class="msg info" style="font-size:14px">👋 ' + T('Welcome! Please add your photo, full name and mobile number to continue.', 'স্বাগতম! চালিয়ে যেতে আপনার ছবি, পূর্ণ নাম ও মোবাইল নম্বর দিন।') + '</div>';
+      return Promise.all([
+        SCS.q(sb.from('profile_documents').select('*').eq('user_id', me.id).order('created_at')),
+        SCS.q(sb.from('profile_change_requests').select('*').eq('user_id', me.id).eq('status', 'pending')).catch(function () { return []; })
+      ]).then(function (r) { st.docs = r[0] || []; st.reqs = r[1] || []; render(); });
+    }).catch(function (e) { $('body').innerHTML = '<div class="empty">' + esc(SCS.err(e)) + '</div>'; });
+  }
+
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('#pickPhoto')) { $('fPhoto').click(); return; }
+    var add = e.target.closest('[data-add]');
+    if (add) { st.docKind = add.getAttribute('data-add'); $('fDoc').click(); return; }
+    var op = e.target.closest('[data-open]');
+    if (op) {
+      var d = st.docs.filter(function (x) { return x.id === op.getAttribute('data-open'); })[0];
+      var w = window.open('', '_blank');
+      SCS.signedUrl(d.path, 600).then(function (u) { if (w) w.location = u; else location.href = u; }).catch(function (er) { if (w) w.close(); toast(SCS.err(er)); });
+      return;
+    }
+    var dl = e.target.closest('[data-dl]');
+    if (dl) {
+      var dd = st.docs.filter(function (x) { return x.id === dl.getAttribute('data-dl'); })[0];
+      SCS.signedUrl(dd.path, 600).then(function (u) {
+        return fetch(u).then(function (r) { return r.blob(); }).then(function (b) {
+          var a = document.createElement('a'); a.href = URL.createObjectURL(b);
+          a.download = (dd.title || dd.kind || 'document').replace(/[^\wঀ-৿ .-]+/g, '_') + (/pdf/.test(dd.mime) ? '.pdf' : '.jpg');
+          document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+        });
+      }).catch(function (er) { toast(SCS.err(er)); });
+      return;
+    }
+    var rq = e.target.closest('[data-reqchange]');
+    if (rq) {
+      var fld = rq.getAttribute('data-reqchange');
+      var nv = prompt(fld === 'phone' ? T('New mobile number (01XXXXXXXXX). The Super Admin will approve it.', 'নতুন মোবাইল নম্বর (01XXXXXXXXX)। Super Admin অনুমোদন দিলে বদলাবে।')
+                                      : T('New email address. The Super Admin will approve it.', 'নতুন ইমেইল ঠিকানা। Super Admin অনুমোদন দিলে বদলাবে।'), '');
+      if (!nv || !nv.trim()) return;
+      SCS.q(sb.rpc('scs_request_change', { p_field: fld, p_value: nv.trim() }))
+        .then(function () { toast(T('Request sent to the admin', 'অনুরোধ অ্যাডমিনের কাছে পাঠানো হয়েছে')); return load(); })
+        .catch(function (er) { toast(SCS.err(er)); });
+      return;
+    }
+    var del = e.target.closest('[data-del]');
+    if (del) {
+      var doc = st.docs.filter(function (x) { return x.id === del.getAttribute('data-del'); })[0];
+      if (!confirm(T('Remove this document?', 'এই ডকুমেন্টটি মুছবেন?'))) return;
+      SCS.q(sb.from('profile_documents').delete().eq('id', doc.id)).then(function () { return SCS.removeFile(doc.path).catch(function () {}); })
+        .then(function () { st.docs = st.docs.filter(function (x) { return x.id !== doc.id; }); render(); toast(T('Removed', 'মুছে ফেলা হয়েছে')); })
+        .catch(function (er) { toast(SCS.err(er)); });
+      return;
+    }
+    if (e.target.closest('#save')) saveProfile();
+    if (e.target.closest('#savePass')) savePass();
+  });
+
+  $('fPhoto').onchange = function () {
+    var f = this.files[0]; this.value = '';
+    if (!f) return;
+    if (!/^image\//.test(f.type)) { toast(T('Choose an image file', 'ছবির ফাইল দিন')); return; }
+    toast(T('Uploading photo…', 'ছবি আপলোড হচ্ছে…'));
+    SCS.resizeImage(f, 640, 0.86).then(function (b) {
+      return SCS.uploadPublic('avatars/' + st.me.id + '/photo-' + Date.now() + '.jpg', b, 'image/jpeg');
+    }).then(function (url) {
+      st.photo = url;
+      return SCS.q(sb.from('profiles').update({ photo_url: url }).eq('id', st.me.id));
+    }).then(function () { st.me.profile.photo_url = st.photo; render(); toast(T('Photo saved', 'ছবি সেভ হয়েছে')); })
+      .catch(function (er) { toast(SCS.err(er)); });
+  };
+
+  $('fDoc').onchange = function () {
+    var f = this.files[0]; this.value = '';
+    if (!f) return;
+    if (!/^image\/|application\/pdf/.test(f.type)) { toast(T('Use an image or a PDF', 'ছবি বা PDF দিন')); return; }
+    if (f.size > 10 * 1024 * 1024) { toast(T('File is larger than 10 MB', 'ফাইল ১০ MB এর বেশি')); return; }
+    var kind = st.docKind, title = KIND[kind];
+    if (kind === 'certificate') {
+      title = prompt(T('Certificate name (e.g. SSC, HSC, B.Sc.)', 'সনদপত্রের নাম (যেমন SSC, HSC, B.Sc.)'), '');
+      if (title === null) return;
+      title = title.trim() || T('Certificate', 'সনদপত্র');
+    }
+    toast(T('Uploading…', 'আপলোড হচ্ছে…'));
+    var isImg = /^image\//.test(f.type);
+    (isImg ? SCS.resizeImage(f, 2000, 0.88) : Promise.resolve(f)).then(function (b) {
+      var ext = isImg ? 'jpg' : 'pdf';
+      var path = 'profiles/' + st.me.id + '/' + kind + '-' + Date.now() + '.' + ext;
+      return SCS.upload(path, b, isImg ? 'image/jpeg' : 'application/pdf').then(function () {
+        var old = (kind === 'nid_front' || kind === 'nid_back') ? st.docs.filter(function (d) { return d.kind === kind; }) : [];
+        return Promise.all(old.map(function (d) { return SCS.q(sb.from('profile_documents').delete().eq('id', d.id)).then(function () { return SCS.removeFile(d.path).catch(function () {}); }); }))
+          .then(function () { return SCS.q(sb.from('profile_documents').insert({ user_id: st.me.id, kind: kind, title: title, path: path, mime: isImg ? 'image/jpeg' : 'application/pdf', size: b.size }).select().single()); });
+      });
+    }).then(function (row) {
+      st.docs = st.docs.filter(function (d) { return !((kind === 'nid_front' || kind === 'nid_back') && d.kind === kind); }).concat([row]);
+      render(); toast(T('Uploaded', 'আপলোড হয়েছে'));
+    }).catch(function (er) { toast(SCS.err(er)); });
+  };
+
+  function saveProfile() {
+    var name = $('pName').value.trim(), phone = $('pPhone').value.replace(/[\s-]/g, '');
+    if (!name) { toast(T('Enter your full name', 'পূর্ণ নাম দিন')); return; }
+    if (!/^(\+?88)?01[3-9]\d{8}$/.test(phone)) { toast(T('Enter a valid mobile number', 'সঠিক মোবাইল নম্বর দিন')); return; }
+    if (!(st.photo || st.me.profile.photo_url)) { toast(T('Upload your photo', 'আপনার ছবি আপলোড করুন')); return; }
+    $('save').disabled = true;
+    var upd = { full_name: name };
+    if (!st.me.profile.phone) upd.phone = phone;     // একবার দেওয়া নম্বর বদলাতে অনুরোধ লাগে
+    SCS.q(sb.from('profiles').update(upd).eq('id', st.me.id).select('id')).then(function (rows) {
+      if (!rows || !rows.length) throw new Error(T('Not saved — please try again.', 'সেভ হয়নি — আবার চেষ্টা করুন।'));
+      toast(T('Profile saved', 'প্রোফাইল সেভ হয়েছে'));
+      var wasIncomplete = !st.me.complete;
+      if (wasIncomplete) { setTimeout(function () { location.href = next || SCS.url('/'); }, 700); return; }
+      return load();
+    }).catch(function (er) { toast(/duplicate|unique/i.test(SCS.err(er)) ? T('This Employee ID is already used by someone else.', 'এই Employee ID অন্য কারো আছে।') : SCS.err(er)); }).then(function () { var b = $('save'); if (b) b.disabled = false; });
+  }
+  function savePass() {
+    var a = $('np1').value, b = $('np2').value;
+    if (a.length < 8) { toast(T('At least 8 characters', 'কমপক্ষে ৮ অক্ষর')); return; }
+    if (a !== b) { toast(T('The two passwords do not match', 'দুটি পাসওয়ার্ড মিলছে না')); return; }
+    var forced = !!st.me.profile.must_change_pw, cur = $('np0') ? $('np0').value : '';
+    if (!forced && !cur) { toast(T('Enter your current password', 'বর্তমান পাসওয়ার্ড দিন')); return; }
+    $('savePass').disabled = true;
+    // আগে বর্তমান পাসওয়ার্ড যাচাই (অন্য কেউ খোলা ফোন থেকে পাসওয়ার্ড বদলাতে পারবে না)
+    var check = forced ? Promise.resolve({}) : sb.auth.signInWithPassword({ email: st.me.email, password: cur });
+    check.then(function (r0) {
+      if (r0 && r0.error) throw new Error(T('The current password is wrong.', 'বর্তমান পাসওয়ার্ড ভুল।'));
+      return sb.auth.updateUser({ password: a });
+    }).then(function (r) {
+      if (r.error) throw r.error;
+      return SCS.q(sb.rpc('scs_password_changed')).catch(function () {});
+    }).then(function () {
+      toast(T('Password updated', 'পাসওয়ার্ড আপডেট হয়েছে'));
+      if (forced) { setTimeout(function () { location.href = next || SCS.url('/'); }, 800); return; }
+      return load();
+    }).catch(function (er) { toast(SCS.err(er)); }).then(function () { var b2 = $('savePass'); if (b2) b2.disabled = false; });
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>File · SCS</title>
+<link rel="icon" type="image/png" href="assets/icon-192.png" />
+<link rel="stylesheet" href="assets/portal.css" />
+<style>
+  .fbar{position:sticky;top:0;z-index:5;display:flex;gap:8px;align-items:center;padding:10px 14px;background:linear-gradient(90deg,#e91e63,#c2185b);color:#fff}
+  .fbar b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fbar .btn{padding:7px 12px;font-size:13px}
+  #view{background:#f1f5f9;min-height:calc(100vh - 54px)}
+  #view iframe{width:100%;height:calc(100vh - 54px);border:0;background:#fff;display:block}
+  #view img{display:block;max-width:100%;margin:18px auto;box-shadow:0 8px 30px rgba(0,0,0,.15)}
+</style>
+</head>
+<body>
+<div class="fbar"><a class="btn g s" href="./">🏠</a><b id="fname">…</b><button class="btn g s hidden" id="prt" type="button">🖨 Print / PDF</button><a class="btn p s hidden" id="dl">⬇ Download</a></div>
+<div id="view"><div class="spin"></div></div>
+<script src="assets/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/scs-core.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var q = new URLSearchParams(location.search), app = q.get('app') || '', id = q.get('id') || '';
+  function fail(t) { $('view').innerHTML = '<div class="empty">' + SCS.esc(t) + '</div>'; }
+  SCS.loadMe().then(function (me) {
+    if (!me) { location.href = SCS.url('/') + '?next=' + encodeURIComponent(location.pathname + location.search); return; }
+    if (!SCS.roleFor(me, app)) { fail(SCS.t('You do not have access to this app.', 'এই অ্যাপে আপনার অ্যাক্সেস নেই।')); return; }
+    return SCS.q(SCS.sb.from('gas_files').select('*').eq('app_key', app).eq('id', id).maybeSingle()).then(function (f) {
+      if (!f || f.is_folder || !f.path) { fail(SCS.t('File not found.', 'ফাইল পাওয়া যায়নি।')); return; }
+      document.title = f.name + ' · SCS'; $('fname').textContent = f.name;
+      return SCS.q(SCS.sb.storage.from('scs-files').download(f.path)).then(function (blob) {
+        var htmlPdf = f.description === 'html-pdf';
+        var type = htmlPdf ? 'text/html' : (f.mime || blob.type);
+        var url = URL.createObjectURL(new Blob([blob], { type: type }));
+        $('dl').href = url; $('dl').download = htmlPdf ? f.name.replace(/\.pdf$/i, '') + '.html' : f.name; $('dl').classList.remove('hidden');
+        if (htmlPdf || /html/.test(type)) {
+          // PDF হিসেবে তৈরি হওয়া বিল/চালান: পেজে দেখায়, Print -> "Save as PDF" দিয়ে PDF
+          $('view').innerHTML = '<iframe id="fr"></iframe>';
+          blob.text().then(function (h) { var d = $('fr').contentWindow.document; d.open(); d.write(h); d.close(); });
+          $('prt').classList.remove('hidden'); $('prt').onclick = function () { $('fr').contentWindow.focus(); $('fr').contentWindow.print(); };
+          if (q.get('print') === '1') setTimeout(function () { $('prt').click(); }, 800);
+        } else if (/^image\//.test(type)) {
+          $('view').innerHTML = '<img src="' + url + '" alt="" />';
+        } else if (/pdf/.test(type)) {
+          $('view').innerHTML = '<iframe src="' + url + '"></iframe>';
+        } else if (/^text\/|json/.test(type)) {
+          blob.text().then(function (t) { $('view').innerHTML = '<pre style="white-space:pre-wrap;padding:16px;margin:0">' + SCS.esc(t.slice(0, 500000)) + '</pre>'; });
+        } else {
+          $('view').innerHTML = '<div class="empty">' + SCS.t('Use the Download button to save this file.', 'ফাইলটি Download বাটন দিয়ে নামান।') + '</div>';
+        }
+        if (q.get('download') === '1') $('dl').click();
+      });
+    });
+  }).catch(function (e) { fail(SCS.err(e)); });
+})();
+</script>
+</body>
+</html>

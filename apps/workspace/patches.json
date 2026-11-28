@@ -1,0 +1,7 @@
+[
+  { "in": "html", "find": "scsq_", "replace": "scsw_", "all": true },
+  { "in": "html", "find": "<!--APP_NAME-->", "replace": "<script>var APP_NAME_SRV = \"SCS Workspace\";</script>" },
+  { "in": "html", "find": "function logout() {", "replace": "function logout() { if (window.SCS && SCS.signOut) { SCS.signOut(); return; }" },
+  { "in": "html", "rx": "<section id=\"login\">.*?</section>", "replace": "<section id=\"login\"><div data-scs-start style=\"width:100%\"></div><div hidden><div id=\"dots\"></div><div id=\"padKeys\"></div><button id=\"btnGo\" disabled></button></div><div id=\"lerr\" hidden></div></section>" },
+  { "in": "html", "find": "S.pin = ''; drawDots(); $('lerr').textContent = e.message || t('wrongPin');", "replace": "S.pin = ''; drawDots(); $('lerr').textContent = e.message || t('wrongPin'); if (window.SCS) SCS.startError(e.message || t('wrongPin'));" }
+]
