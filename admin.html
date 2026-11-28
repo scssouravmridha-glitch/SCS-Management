@@ -24,7 +24,7 @@
   <div class="sidenav" id="tabs">
     <button type="button" data-tab="users" class="on">👥 <span data-i="Users & access|ইউজার ও অ্যাক্সেস"></span> <span id="cPending"></span></button>
     <button type="button" data-tab="apps">🧩 <span data-i="Apps & admin PINs|অ্যাপ ও অ্যাডমিন পিন"></span></button>
-    <button type="button" data-tab="brand">🖼️ <span data-i="Logo|লোগো"></span></button>
+    <button type="button" data-tab="brand" title="Letterheads / pads, seals, signatures, company logo">📁 <span data-i="Documents|ডকুমেন্টস"></span></button>
     <button type="button" data-tab="sms">✉️ <span data-i="SMS & Email|SMS ও ইমেইল"></span></button>
     <button type="button" data-tab="notif">🔔 <span data-i="Notifications & Log|নোটিফিকেশন ও লগ"></span></button>
     <button type="button" data-tab="backup">☁️ <span data-i="Backup|ব্যাকআপ"></span></button>
@@ -69,11 +69,11 @@
     </div>
 
     <div class="card pad" style="max-width:860px;margin-top:14px">
-      <h2 class="h2" data-i="Company library — pads, seals, signatures, logos|কোম্পানির লাইব্রেরি — প্যাড, সিল, সিগনেচার, লোগো"></h2>
+      <h2 class="h2" data-i="Documents library — letterheads / pads, seals, signatures, logos|ডকুমেন্ট লাইব্রেরি — লেটারহেড / প্যাড, সিল, সিগনেচার, লোগো"></h2>
       <p class="small" style="font-size:13.5px;line-height:1.6" data-i="Upload once, use in every app: in an app's settings, next to a seal / signature / logo / pad link box press 📚 and pick. No Google Drive links needed. Use PNG with a transparent background for seals and signatures.|একবার আপলোড করুন, সব অ্যাপে ব্যবহার করুন: অ্যাপের সেটিংসে সিল / সিগনেচার / লোগো / প্যাডের লিংকের ঘরের পাশে 📚 চেপে বেছে নিন। Google Drive লিংক লাগবে না। সিল ও সিগনেচারের জন্য স্বচ্ছ ব্যাকগ্রাউন্ডের PNG দিন।"></p>
       <div class="toolbar" style="margin:6px 0 10px;flex-wrap:wrap;gap:6px">
         <select class="in-f" id="baKind" style="width:auto">
-          <option value="pad" data-i="Pad (letterhead)|প্যাড (লেটারহেড)"></option>
+          <option value="pad" data-i="Letterhead / Pad|লেটারহেড / প্যাড"></option>
           <option value="seal" data-i="Seal|সিল"></option>
           <option value="signature" data-i="Signature|সিগনেচার"></option>
           <option value="logo" data-i="Logo|লোগো"></option>
@@ -298,12 +298,14 @@
       '<div class="bt"><button type="button" class="btn p s" data-manage="' + p.id + '" data-approve="1">✔ ' + T('Approve & give access', 'অনুমোদন ও অ্যাক্সেস') + '</button>' +
       '<button type="button" class="btn g s" data-reject="' + p.id + '" style="flex:none">✕ ' + T('Reject', 'বাতিল') + '</button></div></div>';
   }
+  /** লেখার ভেতরে ছোট আইকন (ছবি হলে ছোট ছবি) */
+  function ico(a, px) { px = px || 16; return SCS.isIconImg(a.icon) ? '<img src="' + esc(a.icon) + '" alt="" style="width:' + px + 'px;height:' + px + 'px;border-radius:4px;object-fit:cover;vertical-align:-3px" />' : esc(a.icon || '📦'); }
   function urow(p) {
     var acc = accessOf(p.id), self = p.id === st.me.id, chips;
     if (p.is_super_admin) chips = '<span class="achip admin">★ ' + T('All apps · Admin', 'সব অ্যাপ · Admin') + '</span>';
     else {
       chips = st.apps.filter(function (a) { return acc[a.key]; }).map(function (a) {
-        return '<span class="achip ' + (acc[a.key] === 'admin' ? 'admin' : '') + '" title="' + esc(a.name) + '">' + esc(a.icon || '📦') + ' ' + (acc[a.key] === 'admin' ? 'Admin' : 'User') + '</span>';
+        return '<span class="achip ' + (acc[a.key] === 'admin' ? 'admin' : '') + '" title="' + esc(a.name) + '">' + ico(a) + ' ' + (acc[a.key] === 'admin' ? 'Admin' : 'User') + '</span>';
       }).join('') || '<span class="achip none">' + T('No app access', 'কোনো অ্যাপ অ্যাক্সেস নেই') + '</span>';
     }
     var stB = { pending: 'warn', active: 'ok', disabled: 'bad' }[p.status];
@@ -379,7 +381,7 @@
     function appsHtml() {
       if (d.super) return '<div class="msg info" style="margin:8px 0 0">★ ' + T('Super Admin is Admin of every app (and of this console).', 'Super Admin সব অ্যাপে Admin (এবং এই কনসোলেও)।') + '</div>';
       return st.apps.map(function (a) {
-        return '<div class="arow"><div class="aic" style="background:' + esc(a.color || '#e91e63') + '">' + esc(a.icon || '📦') + '</div><div class="nm">' + esc(shortName(a)) + (a.active ? '' : ' <span class="badge">' + T('hidden', 'লুকানো') + '</span>') + '</div>' +
+        return '<div class="arow"><div class="aic" style="overflow:hidden;background:' + (SCS.isIconImg(a.icon) ? '#fff' : esc(a.color || '#e91e63')) + '">' + SCS.iconHtml(a) + '</div><div class="nm">' + esc(shortName(a)) + (a.active ? '' : ' <span class="badge">' + T('hidden', 'লুকানো') + '</span>') + '</div>' +
           segBtns('app', d.acc[a.key] || '', { app: a.key, items: [['', T('No access', 'নেই')], ['user', 'User'], ['admin', 'Admin']] }) + '</div>';
       }).join('') + '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button type="button" class="btn g s" data-allapps="user">' + T('User in all apps', 'সব অ্যাপে User') + '</button><button type="button" class="btn g s" data-allapps="">' + T('Remove all', 'সব সরান') + '</button></div>';
     }
@@ -628,7 +630,7 @@
         return '<div class="row"><div style="display:flex;flex-direction:column;gap:2px">' +
           '<button class="btn g s" data-appmove="' + i + '" data-dir="-1" title="' + T('Move up', 'উপরে') + '"' + (i ? '' : ' disabled') + ' style="padding:2px 8px">▲</button>' +
           '<button class="btn g s" data-appmove="' + i + '" data-dir="1" title="' + T('Move down', 'নিচে') + '"' + (i < st.apps.length - 1 ? '' : ' disabled') + ' style="padding:2px 8px">▼</button></div>' +
-          '<div class="av" style="border-radius:14px;background:' + esc(a.color || '#e91e63') + ';color:#fff;font-size:20px">' + esc(a.icon || '📦') + '</div>' +
+          '<div class="av" style="border-radius:14px;overflow:hidden;background:' + (SCS.isIconImg(a.icon) ? '#fff' : esc(a.color || '#e91e63')) + ';color:#fff;font-size:20px">' + SCS.iconHtml(a) + '</div>' +
           '<div class="grow"><b>' + esc(a.name) + '</b> ' + (a.active ? '' : '<span class="badge bad">' + T('hidden', 'লুকানো') + '</span>') +
           '<div class="small">' + esc(a.key) + ' · ' + esc(a.path) + (a.description ? ' · ' + esc(a.description) : '') + '</div></div>' +
           '<div class="acc"><span class="small">🔐 PIN</span><input class="in-f" style="width:110px;padding:7px 10px" type="password" autocomplete="off" inputmode="numeric" maxlength="4" data-pin="' + esc(a.key) + '" value="' + esc(st.pins[a.key] || '') + '" />' +
@@ -636,6 +638,23 @@
           '<button class="btn g s" data-appedit="' + esc(a.key) + '">✎ ' + T('Edit', 'এডিট') + '</button></div></div>';
       }).join('') || '<div class="empty">—</div>';
     }).catch(function (e) { $('appList').innerHTML = '<div class="empty">' + esc(SCS.err(e)) + '</div>'; });
+  }
+  /** আইকনের ছবি: বর্গাকার ২৫৬px PNG (স্বচ্ছতা থাকে, ছোট ফাইল — হোম পেজ দ্রুত); SVG যেমন আছে */
+  function iconSquare(f) {
+    if (f.type === 'image/svg+xml') return Promise.resolve(f);
+    return new Promise(function (res, rej) {
+      var img = new Image(), u = URL.createObjectURL(f);
+      img.onload = function () {
+        var n = 256, c = document.createElement('canvas'); c.width = c.height = n;
+        var s = Math.min(img.width, img.height), g = c.getContext('2d');
+        g.imageSmoothingQuality = 'high';
+        g.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, n, n);   // মাঝখান থেকে বর্গ কাটা
+        URL.revokeObjectURL(u);
+        c.toBlob(function (b) { b ? res(b) : rej(new Error('Could not read the picture')); }, 'image/png');
+      };
+      img.onerror = function () { URL.revokeObjectURL(u); rej(new Error(T('Not a picture', 'ছবি নয়'))); };
+      img.src = u;
+    });
   }
   function appForm(a) {
     var isNew = !a; a = a || { key: '', name: 'SCS ', name_bn: '', description: '', path: '/apps/', icon: '📦', color: '#2563eb', sort_order: (st.apps.length + 1), active: true };
@@ -645,11 +664,30 @@
       '<div class="row2"><div class="field"><label class="l">' + T('Name', 'নাম') + '</label><input class="in-f" id="aName" value="' + esc(a.name) + '" /></div>' +
       '<div class="field"><label class="l">' + T('Name (Bangla)', 'নাম (বাংলা)') + '</label><input class="in-f" id="aNameBn" value="' + esc(a.name_bn || '') + '" /></div></div>' +
       '<div class="field"><label class="l">' + T('Short description', 'ছোট বিবরণ') + '</label><input class="in-f" id="aDesc" value="' + esc(a.description || '') + '" /></div>' +
-      '<div class="row2"><div class="field"><label class="l">' + T('Icon (emoji)', 'আইকন (ইমোজি)') + '</label><input class="in-f" id="aIcon" value="' + esc(a.icon || '') + '" /></div>' +
+      '<div class="row2"><div class="field"><label class="l">' + T('Icon — upload a picture, or type an emoji', 'আইকন — ছবি আপলোড করুন, বা ইমোজি লিখুন') + '</label>' +
+      '<div style="display:flex;gap:8px;align-items:center"><div id="aIconPrev" style="width:46px;height:46px;flex:none;border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;background:' + esc(a.color || '#2563eb') + '">' + SCS.iconHtml(a) + '</div>' +
+      '<input class="in-f" id="aIcon" value="' + esc(a.icon || '') + '" style="min-width:0" />' +
+      '<button class="btn g s" type="button" id="aIconUp" title="' + T('Upload icon picture', 'আইকনের ছবি আপলোড') + '">⬆ ' + T('Picture', 'ছবি') + '</button>' +
+      '<input type="file" id="aIconFile" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="hidden" /></div>' +
+      '<div class="small" style="margin-top:4px">' + T('Square PNG/SVG works best (shown on the home page and in the app list).', 'বর্গাকার PNG/SVG ভালো (হোম পেজ ও অ্যাপ তালিকায় দেখাবে)।') + '</div></div>' +
       '<div class="field"><label class="l">' + T('Color', 'রং') + '</label><input class="in-f" id="aColor" type="color" value="' + esc(a.color || '#2563eb') + '" style="height:46px;padding:4px" /></div></div>' +
       '<div class="row2"><div class="field"><label class="l">' + T('Order', 'ক্রম') + '</label><input class="in-f" id="aSort" type="number" value="' + esc(a.sort_order) + '" /></div>' +
       '<div class="field" style="display:flex;align-items:end"><label class="switch"><input type="checkbox" id="aActive"' + (a.active ? ' checked' : '') + ' /> ' + T('Show on home page', 'হোম পেজে দেখাবে') + '</label></div></div>' +
       '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn g" data-close>' + T('Cancel', 'বাতিল') + '</button><button class="btn p" id="aSave">' + T('Save', 'সেভ') + '</button></div>');
+    function iconPrev() { var v = $('aIcon').value.trim(); $('aIconPrev').style.background = SCS.isIconImg(v) ? '#fff' : $('aColor').value; $('aIconPrev').innerHTML = SCS.iconHtml({ icon: v }); }
+    $('aIcon').oninput = iconPrev; $('aColor').oninput = iconPrev;
+    $('aIconUp').onclick = function () { $('aIconFile').click(); };
+    $('aIconFile').onchange = function () {
+      var f = this.files[0]; this.value = ''; if (!f) return;
+      var key = $('aKey').value.trim().toLowerCase() || 'app';
+      if (f.size > 3 * 1024 * 1024) { toast(T('Icon must be under 3 MB', 'আইকন ৩ MB এর কম হতে হবে')); return; }
+      toast(T('Uploading…', 'আপলোড হচ্ছে…'));
+      iconSquare(f).then(function (b) {
+        var ext = b.type === 'image/svg+xml' ? 'svg' : 'png';
+        return SCS.uploadPublic('brand/app-icons/' + key.replace(/[^a-z0-9-]/g, '') + '-' + Date.now() + '.' + ext, b, b.type);
+      }).then(function (url) { $('aIcon').value = url; iconPrev(); toast(T('Icon uploaded — press Save', 'আইকন আপলোড হয়েছে — Save চাপুন')); })
+        .catch(function (e) { toast(SCS.err(e)); });
+    };
     $('aSave').onclick = function () {
       var row = { key: $('aKey').value.trim().toLowerCase(), name: $('aName').value.trim(), name_bn: $('aNameBn').value.trim(), description: $('aDesc').value.trim(), path: $('aPath').value.trim(), icon: $('aIcon').value.trim() || '📦', color: $('aColor').value, sort_order: Number($('aSort').value) || 0, active: $('aActive').checked };
       if (!/^[a-z0-9-]{2,40}$/.test(row.key)) { toast(T('Key: lowercase letters, numbers and - only', 'Key: শুধু ছোট হাতের অক্ষর, সংখ্যা ও -')); return; }
@@ -811,7 +849,7 @@
     'leave': [['leave_applications', 'Leave applications'], ['leave_employees', 'Employees'], ['leave_settings', 'Settings'], ['leave_signatures', 'Signatures & seal']]
   };
   var nf = { rules: [], hidden: [] };
-  function appName(k) { var a = st.apps.filter(function (x) { return x.key === k; })[0]; return k === 'core' ? 'SCS Management' : a ? (a.icon || '') + ' ' + a.name.replace(/^SCS /, '') : k; }
+  function appName(k) { var a = st.apps.filter(function (x) { return x.key === k; })[0]; return k === 'core' ? 'SCS Management' : a ? (SCS.isIconImg(a.icon) ? '' : (a.icon || '') + ' ') + a.name.replace(/^SCS /, '') : k; }
   function loadNotif() {
     Promise.all([
       SCS.q(sb.from('notif_rules').select('*').order('sort_order')),

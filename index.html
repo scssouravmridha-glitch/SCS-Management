@@ -476,7 +476,7 @@
       var nm = SCS.lang === 'bn' && a.name_bn ? a.name_bn : a.name;
       var ext = /^https?:/i.test(a.path || '');
       return '<a class="card app' + (role ? '' : ' off') + '" style="--c:' + esc(a.color || '#e91e63') + '" href="' + (role ? esc(SCS.url(a.path)) : '#') + '"' + (ext ? ' target="_blank" rel="noopener"' : '') + '>' +
-        '<div class="ic">' + esc(a.icon || '📦') + '</div>' +
+        '<div class="ic' + (SCS.isIconImg(a.icon) ? ' img' : '') + '">' + SCS.iconHtml(a) + '</div>' +
         '<div><h3>' + esc(nm) + '</h3><p>' + esc(a.description || '') + '</p></div>' +
         '<div class="ft">' + (role ? '<span class="badge ' + role + '">' + role + '</span><span class="go">→</span>' : '<span class="badge">🔒 ' + T('No access', 'অ্যাক্সেস নেই') + '</span>') + '</div></a>';
     }).join('') || '<div class="empty">' + T('No app access yet. Ask the admin to give you access.', 'এখনো কোনো অ্যাপের অনুমতি নেই। অ্যাডমিনের কাছে অনুমতি চান।') + '</div>';
@@ -490,7 +490,7 @@
       topBar(me);
       if (!me) {
         sb.from('apps').select('icon').eq('active', true).order('sort_order').then(function (r) {
-          $('heroApps').innerHTML = ((r && r.data) || []).map(function (a) { return '<span>' + esc(a.icon || '📦') + '</span>'; }).join('');
+          $('heroApps').innerHTML = ((r && r.data) || []).map(function (a) { return '<span' + (SCS.isIconImg(a.icon) ? ' style="padding:0;overflow:hidden"' : '') + '>' + SCS.iconHtml(a) + '</span>'; }).join('');
         });
         show('vAuth'); return;
       }

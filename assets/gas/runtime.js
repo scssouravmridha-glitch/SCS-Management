@@ -1019,9 +1019,31 @@ function fetchReq(url, o) {
   }
   return { url: String(url), method: String(o.method || (payload ? 'post' : 'get')).toUpperCase(), headers: Object.assign({}, o.headers || {}, ct ? { 'Content-Type': ct } : {}), body: body64 };
 }
+/* সাধারণ GET (ছবি/প্যাড/লাইব্রেরি) আগে সরাসরি ব্রাউজার থেকে — দ্রুত, সার্ভার ফাংশন লাগে না।
+   যেসব সাইট ব্রাউজারকে দেয় না (CORS, যেমন Google Drive) সেগুলো আগের মতো সার্ভারের মাধ্যমে। */
+var DIRECT_CACHE = {};
+function directGet(url, o) {
+  o = o || {};
+  if (!/^https?:\/\//i.test(url) || (o.payload != null) || (o.method && !/^get$/i.test(o.method)) || (o.headers && Object.keys(o.headers).length)) return null;
+  if (/(^|\.)google\.com\/|googleusercontent\.com\//i.test(url)) return null;   // Google ব্রাউজারকে সরাসরি দেয় না
+  // শুধু ফাইল (নিজের Storage, এই সাইট, বা ছবি/PDF লিংক) — কোনো API কে দুবার ডাকা যাবে না
+  var own = url.indexOf('/storage/v1/object/') > 0 || url.indexOf(self.location.origin + '/') === 0;
+  if (!own && !/\.(png|jpe?g|gif|webp|svg|bmp|ico|pdf|ttf|otf|woff2?)(\?|#|$)/i.test(url)) return null;
+  if (DIRECT_CACHE[url]) return DIRECT_CACHE[url];
+  try {
+    var x = new XMLHttpRequest();
+    x.open('GET', url, false); x.responseType = 'arraybuffer'; x.send();
+    if (x.status < 200 || x.status >= 300) return null;
+    var hd = {}; String(x.getAllResponseHeaders() || '').split(/\r?\n/).forEach(function (l) { var i = l.indexOf(':'); if (i > 0) hd[l.slice(0, i).trim().toLowerCase()] = l.slice(i + 1).trim(); });
+    var u8 = new Uint8Array(x.response);
+    var r = { code: x.status, headers: hd, body: b64enc(u8) };
+    if (u8.length < 6e6) DIRECT_CACHE[url] = r;
+    return r;
+  } catch (e) { return null; }
+}
 var UrlFetchApp = {
   fetch: function (url, o) {
-    var r = STORE.api('fetch', fetchReq(url, o));
+    var r = directGet(String(url), o) || STORE.api('fetch', fetchReq(url, o));
     var res = new HTTPResponse(r);
     if (!(o && o.muteHttpExceptions) && r.code >= 400) throw gasError('Request failed for ' + url + ' returned code ' + r.code + '. Truncated server response: ' + res.getContentText().slice(0, 200));
     return res;

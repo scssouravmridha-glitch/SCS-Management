@@ -64,7 +64,7 @@
 
   function fill(me) {
     var apps = me.apps.filter(function (a) { return SCS.roleFor(me, a.key); });
-    var opts = '<option value="">' + T('All apps', 'সব অ্যাপ') + '</option>' + apps.map(function (a) { return '<option value="' + esc(a.key) + '">' + esc((a.icon || '') + ' ' + a.name) + '</option>'; }).join('');
+    var opts = '<option value="">' + T('All apps', 'সব অ্যাপ') + '</option>' + apps.map(function (a) { return '<option value="' + esc(a.key) + '">' + esc((SCS.isIconImg(a.icon) ? '' : (a.icon || '') + ' ') + a.name) + '</option>'; }).join('');
     if (me.isSuper) opts += '<option value="core">👥 ' + T('Users & system', 'ইউজার ও সিস্টেম') + '</option>';
     $('fApp').innerHTML = opts;
     var want = params.get('app') || '';
