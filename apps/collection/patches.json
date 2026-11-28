@@ -1,0 +1,5 @@
+[
+  { "in": "html", "find": "function tryLogin(manual) {", "replace": "window.__scsColLogin = function () { if (!S.role) { S.pin = 'scs-account'; tryLogin(true); } };\nfunction tryLogin(manual) {" },
+  { "in": "html", "find": "if (a === 'logout') {", "replace": "if (a === 'logout') { if (window.SCS && SCS.signOut) { SCS.signOut(); return; }" },
+  { "rx": "function loginView\\(\\) \\{.*?All Rights Reserved\\.</footer></div>';\\s*\\}", "replace": "/* SCS: পিন-লগইন স্ক্রিন বাদ (SCS অ্যাকাউন্টই লগইন) */\nfunction loginView() { return SCS.startHTML(); }" }
+]
