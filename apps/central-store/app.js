@@ -365,6 +365,7 @@ function sizeSel(prefix, size) {
 
 /* ---------- event delegation ---------- */
 var ACT = {}, CH = {}, IN = {}, KD = {};
+window.__scsStore = { S: S, ACT: ACT, load: function () { if (S.view === 'dashboard') VIEW_LOAD.dashboard(); }, soft: function () { try { softRender(); } catch (e) { render(); } } };
 document.addEventListener('click', function (e) {
   var el = e.target.closest('[data-act]');
   if (!el || el.disabled) return;
@@ -786,7 +787,7 @@ var TR = 'hover:bg-slate-50 dark:hover:bg-slate-800/50 even:bg-slate-50/50 dark:
  *  DASHBOARD
  * ===================================================================== */
 VIEW_LOAD.dashboard = function () {
-  return swr('dashboard', { month: S.month || today().slice(0, 7), date: S.dashDate || today() }, function (d) { S.dash = d; if (S.view === 'dashboard') softRender(); }).catch(failToast);
+  return swr('dashboard', { month: S.month || today().slice(0, 7), date: S.dashDate || today(), period: S.dashPeriod || 'today' }, function (d) { S.dash = d; if (S.view === 'dashboard') softRender(); }).catch(failToast);
 };
 CH['dash-date'] = function (el) { S.dashDate = el.value; VIEW_LOAD.dashboard(); };
 VIEW_RENDER.dashboard = function () {
@@ -815,8 +816,8 @@ VIEW_RENDER.dashboard = function () {
     <button type="button" data-act="go" data-v="entry" class="ml-auto px-2.5 py-1 rounded-lg bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer">${ic('arrow-up-down', 'w-3.5 h-3.5')}<span>${L('Stock IN / OUT', 'স্টক ইন / আউট')}</span></button></div>
   <div class="rounded-xl p-2 sm:p-2.5 bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 text-white shadow-md border border-slate-700/60">
     <div class="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
-      <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div><span class="text-xs font-black">${L("Today's Activity", 'আজকের কার্যক্রম')}</span><span class="text-[9px] font-mono px-1.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">LIVE</span></div>
-      <div class="flex items-center gap-1 bg-slate-800/90 border border-slate-700 px-2 py-0.5 rounded-lg">${ic('calendar', 'w-3.5 h-3.5 text-pink-400 shrink-0')}
+      <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div><span class="text-xs font-black">${window.scsDashTitle ? scsDashTitle() : L("Today's Activity", 'আজকের কার্যক্রম')}</span><span class="text-[9px] font-mono px-1.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">LIVE</span></div>
+      ${window.scsDashBtns ? scsDashBtns() : ''}<div style="${(S.dashPeriod || 'today') !== 'today' ? 'display:none' : ''}" class="flex items-center gap-1 bg-slate-800/90 border border-slate-700 px-2 py-0.5 rounded-lg">${ic('calendar', 'w-3.5 h-3.5 text-pink-400 shrink-0')}
         <select data-ch="dash-date" class="bg-transparent text-xs font-bold text-white focus:outline-hidden cursor-pointer">${days.map(function (x) { return `<option value="${x}" class="bg-slate-900 text-white"${x === (S.dashDate || today()) ? ' selected' : ''}>${x}</option>`; }).join('')}</select></div>
     </div>
     <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">

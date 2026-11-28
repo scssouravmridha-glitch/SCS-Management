@@ -433,8 +433,14 @@
         '.scs-hrow>:first-child img{width:22px!important;height:22px!important}' +
         '.scs-hrow>:first-child img,.scs-hrow>:first-child i,.scs-hrow>:first-child [data-scs-logo]{flex:none!important;overflow:visible!important;text-overflow:clip!important}' +
         '.scs-hrow>:first-child h1,.scs-hrow>:first-child b,.scs-hrow>:first-child span,.scs-hrow>:first-child div{font-size:12px!important;line-height:1.12!important;letter-spacing:-.1px}' +
-        '.scs-hrow>:first-child{padding-top:3px!important;padding-bottom:3px!important;max-width:42vw}' +
-        '.scs-hslot{gap:3px!important}' +
+        // মোবাইলে: অ্যাপের নাম নিজের লাইনে (পুরো চওড়া, পরিষ্কার), বাটনগুলো তার নিচের লাইনে (দরকারে আঙুলে সরানো যায়)
+        '.scs-hrow{flex-wrap:wrap!important;row-gap:4px!important;height:auto!important;max-height:none!important}' +
+        '.scs-hdr,.scs-hdr>*{height:auto!important;max-height:none!important;min-height:0!important}' +
+        '.scs-hrow>:first-child{padding-top:3px!important;padding-bottom:3px!important;max-width:none!important;flex:1 1 100%!important;display:flex!important;align-items:center!important;gap:6px!important}' +
+        '.scs-hrow>:first-child h1,.scs-hrow>:first-child b,.scs-hrow>:first-child span,.scs-hrow>:first-child div{font-size:14px!important;font-weight:800!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:100%}' +
+        '.scs-hrow>:first-child img{width:26px!important;height:26px!important}' +
+        '.scs-hslot{gap:3px!important;width:100%;margin-left:0!important;justify-content:flex-end!important;overflow-x:auto!important;scrollbar-width:none}.scs-hslot::-webkit-scrollbar{display:none}' +
+        '.scs-hflat>.scs-hrow>:not(:first-child){flex:0 0 auto!important}' +
         '.scs-hslot>button,.scs-hslot>a,.scs-hslot .scs-gear{height:29px!important;min-width:29px!important;width:auto;padding:0 6px!important;border-radius:9px!important;font-size:11.5px!important}' +
         '.scs-hslot .scs-gear{width:29px!important;padding:0!important}' +
         '.scs-hslot svg{width:15px!important;height:15px!important}' +
@@ -1211,6 +1217,71 @@
     slot.appendChild(g);
     SCS.startNotifications();
   };
+
+  /* ---------------- ব্রাউজারের alert / confirm / prompt নেই — সব পেজের ভেতরের সুন্দর পপআপে ----------------
+   *  alert -> পর্দার মাঝে বার্তা (OK)। confirm / prompt -> পেজের ভেতরে প্রশ্ন; "হ্যাঁ" চাপলে যে বাটন/ঘর থেকে প্রশ্নটা এসেছিল
+   *  সেটা আবার চালানো হয় আর এবার উত্তর "হ্যাঁ"/লেখা যায় — তাই অ্যাপের কোড না বদলেই সব জায়গায় কাজ করে
+   *  (Android অ্যাপের WebView এও, যেখানে ব্রাউজারের অ্যালার্ট আসে না) */
+  (function () {
+    var LAST = null, OK = null;
+    ['click', 'change', 'keydown', 'submit'].forEach(function (t) {
+      document.addEventListener(t, function (e) { if (e.isTrusted) LAST = { type: t, target: e.target, key: e.key, at: Date.now(), form: e.target && e.target.form }; }, true);
+    });
+    function replay(ev) {
+      if (!ev || !ev.target || !document.contains(ev.target)) return false;
+      var t = ev.target;
+      if (ev.type === 'click') { if (typeof t.click === 'function') t.click(); else t.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); }
+      else if (ev.type === 'change') t.dispatchEvent(new Event('change', { bubbles: true }));
+      else if (ev.type === 'keydown') t.dispatchEvent(new KeyboardEvent('keydown', { key: ev.key, bubbles: true, cancelable: true }));
+      else if (ev.type === 'submit') { var f = t.closest ? t.closest('form') : null; if (f && f.requestSubmit) f.requestSubmit(); else return false; }
+      return true;
+    }
+    function dlgCss() {
+      if (document.getElementById('scs-dlg-css')) return;
+      var s = document.createElement('style'); s.id = 'scs-dlg-css';
+      s.textContent = '.scs-dlg{position:fixed;inset:0;z-index:2147483646;background:rgba(15,23,42,.5);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;padding:16px;animation:scsDf .12s ease-out}' +
+        '@keyframes scsDf{from{opacity:0}}.scs-dlg .bx{width:100%;max-width:400px;background:#fff;color:#0f172a;border-radius:20px;padding:20px;box-shadow:0 30px 70px rgba(0,0,0,.3);font:14px/1.55 "Hind Siliguri","Inter",system-ui,sans-serif;animation:scsDp .14s ease-out}' +
+        '@keyframes scsDp{from{transform:translateY(8px) scale(.98)}}.scs-dlg .ic{font-size:26px;margin-bottom:6px}.scs-dlg .tx{white-space:pre-wrap;word-break:break-word;max-height:55vh;overflow:auto}' +
+        '.scs-dlg input{width:100%;box-sizing:border-box;margin-top:12px;padding:10px 12px;border:1px solid #d9dde5;border-radius:12px;font:inherit;outline:none}.scs-dlg input:focus{border-color:#e91e63;box-shadow:0 0 0 3px rgba(233,30,99,.14)}' +
+        '.scs-dlg .bt{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}.scs-dlg .bt button{border:0;border-radius:12px;padding:10px 18px;font:inherit;font-weight:700;cursor:pointer}' +
+        '.scs-dlg .bt .n{background:#f1f5f9;color:#0f172a}.scs-dlg .bt .y{background:#e91e63;color:#fff}';
+      (document.head || document.documentElement).appendChild(s);
+    }
+    /** পেজের ভেতরের প্রশ্ন/বার্তা: kind = alert | confirm | prompt; ফেরত Promise (true/false/লেখা/null) */
+    SCS.dialog = function (kind, msg, def) {
+      dlgCss();
+      return new Promise(function (res) {
+        var d = document.createElement('div'); d.className = 'scs-dlg';
+        var ico = kind === 'alert' ? (/error|fail|wrong|ভুল|হয়নি|সমস্যা|❌|⚠/i.test(String(msg)) ? '⚠️' : 'ℹ️') : kind === 'prompt' ? '✏️' : '❓';
+        d.innerHTML = '<div class="bx" role="dialog" aria-modal="true"><div class="ic">' + ico + '</div><div class="tx"></div>' + (kind === 'prompt' ? '<input type="text">' : '') +
+          '<div class="bt">' + (kind === 'alert' ? '' : '<button type="button" class="n">' + T('Cancel', 'বাতিল') + '</button>') + '<button type="button" class="y">' + (kind === 'alert' ? 'OK' : T('Yes, continue', 'হ্যাঁ, চালিয়ে যান')) + '</button></div></div>';
+        d.querySelector('.tx').textContent = String(msg == null ? '' : msg);
+        var inp = d.querySelector('input'); if (inp) inp.value = def == null ? '' : String(def);
+        var done = function (v) { d.remove(); document.removeEventListener('keydown', key, true); res(v); };
+        var yes = function () { done(kind === 'prompt' ? inp.value : true); }, no = function () { done(kind === 'prompt' ? null : kind === 'alert' ? true : false); };
+        var key = function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); no(); } else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); yes(); } };
+        d.querySelector('.y').onclick = yes; if (d.querySelector('.n')) d.querySelector('.n').onclick = no;
+        d.addEventListener('mousedown', function (e) { if (e.target === d && kind === 'alert') no(); });
+        document.addEventListener('keydown', key, true);
+        (document.body || document.documentElement).appendChild(d);
+        setTimeout(function () { (inp || d.querySelector('.y')).focus(); if (inp) inp.select(); }, 30);
+      });
+    };
+    window.alert = function (msg) { SCS.dialog('alert', msg); };
+    function ask(kind, msg, def) {
+      var m = String(msg == null ? '' : msg);
+      if (OK && OK.msg === m && OK.kind === kind && Date.now() < OK.until) { var v = OK.value; OK = null; return v; }
+      var ev = LAST && Date.now() - LAST.at < 30000 ? LAST : null;
+      SCS.dialog(kind, m, def).then(function (v) {
+        if (kind === 'confirm' ? v !== true : v === null) return;
+        OK = { kind: kind, msg: m, value: v, until: Date.now() + 15000 };
+        if (!replay(ev)) { OK = null; SCS.toast && SCS.toast(T('Please press the button again.', 'বাটনটা আবার চাপুন।')); }
+      });
+      return kind === 'confirm' ? false : null;
+    }
+    window.confirm = function (msg) { return ask('confirm', msg); };
+    window.prompt = function (msg, def) { return ask('prompt', msg, def); };
+  })();
 
   /* ---------------- প্রিন্ট — সব অ্যাপে একটাই কমান্ড (Android অ্যাপের জন্য) ----------------
    *  সাধারণ ব্রাউজারে কিছুই বদলায় না। Android অ্যাপের WebView এ "SCSAndroid" নামে JavascriptInterface থাকলে:

@@ -44,3 +44,26 @@ pinCheck_ = function (ctx, d) {
   }
 };
 logout_ = function () { return { ok: true }; };
+
+/* ড্যাশবোর্ডের "আজকের কার্যক্রম" বাক্স: আজ / এই মাস / এই বছর / লাইফটাইম (d.period = today | month | year | life) */
+var __scsDash = dashboard_;
+dashboard_ = function (ctx, d) {
+  var r = __scsDash.apply(this, arguments);
+  var p = (d && d.period) || 'today';
+  r.period = p;
+  if (p === 'today') return r;
+  var month = r.month || today_().slice(0, 7), year = String((d && d.year) || month.slice(0, 4));
+  var from = p === 'month' ? month + '-01' : p === 'year' ? year + '-01-01' : '0000-00-00';
+  var to = p === 'month' ? month + '-31' : p === 'year' ? year + '-12-31' : '9999-12-31';
+  var t = { inQty: 0, outQty: 0, count: 0, batches: {} };
+  activeTxns_().forEach(function (x) {
+    var dt = String(x.TxnDate || '');
+    if (dt < from || dt > to) return;
+    t.count++; t.batches[x.BatchID] = 1;
+    var q = num_(x.Quantity);
+    if (x.Type === 'IN') t.inQty += q; else if (x.Type === 'OUT') t.outQty += q;
+  });
+  r.today = { inQty: round_(t.inQty), outQty: round_(t.outQty), lines: t.count, batches: Object.keys(t.batches).length };
+  r.year = year;
+  return r;
+};

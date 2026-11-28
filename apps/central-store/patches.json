@@ -3,5 +3,9 @@
   { "rx": "function loginHTML\\(\\) \\{.*?All Rights Reserved\\.</span></footer></div>';\\s*\\}", "replace": "/* SCS: পিন-লগইন স্ক্রিন বাদ (SCS অ্যাকাউন্টই লগইন) — অ্যাপ খোলার সময় শুধু খোলার স্ক্রিন */\nfunction loginHTML() { return SCS.startHTML(S.loginError); }" },
   { "rx": "function pinPress\\(d\\) \\{.*?\\nfunction doLogin\\(\\) \\{.*?\\n  \\}\\);\\n\\}", "replace": "function doLogin() {}" },
   { "find": "}).catch(function () { busy(false); S.token = ''; LS.del('scs_store_token'); render(); });", "replace": "}).catch(function (e) { busy(false); S.loginError = (e && e.message) || String(e); render(); });" },
-  { "find": "function sessionLost() {", "replace": "function sessionLost() { if (window.SCS && SCS.reloadApp) { SCS.reloadApp(); return; }" }
+  { "find": "function sessionLost() {", "replace": "function sessionLost() { if (window.SCS && SCS.reloadApp) { SCS.reloadApp(); return; }" },
+  { "find": "return swr('dashboard', { month: S.month || today().slice(0, 7), date: S.dashDate || today() }", "replace": "return swr('dashboard', { month: S.month || today().slice(0, 7), date: S.dashDate || today(), period: S.dashPeriod || 'today' }" },
+  { "find": "${L(\"Today's Activity\", 'আজকের কার্যক্রম')}", "replace": "${window.scsDashTitle ? scsDashTitle() : L(\"Today's Activity\", 'আজকের কার্যক্রম')}" },
+  { "find": "<div class=\"flex items-center gap-1 bg-slate-800/90 border border-slate-700 px-2 py-0.5 rounded-lg\">${ic('calendar', 'w-3.5 h-3.5 text-pink-400 shrink-0')}", "replace": "${window.scsDashBtns ? scsDashBtns() : ''}<div style=\"${(S.dashPeriod || 'today') !== 'today' ? 'display:none' : ''}\" class=\"flex items-center gap-1 bg-slate-800/90 border border-slate-700 px-2 py-0.5 rounded-lg\">${ic('calendar', 'w-3.5 h-3.5 text-pink-400 shrink-0')}" },
+  { "find": "var ACT = {}, CH = {}, IN = {}, KD = {};", "replace": "var ACT = {}, CH = {}, IN = {}, KD = {};\nwindow.__scsStore = { S: S, ACT: ACT, load: function () { if (S.view === 'dashboard') VIEW_LOAD.dashboard(); }, soft: function () { try { softRender(); } catch (e) { render(); } } };" }
 ]

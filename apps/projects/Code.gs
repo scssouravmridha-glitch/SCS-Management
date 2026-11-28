@@ -424,7 +424,7 @@ function exportAll(pin) {
   needAdmin_(pin);
   var d = loadAll(), data = {};
   COLLS.forEach(function (c) { data[c] = d[c]; });
-  return { app: 'SCS Projects', version: 2, exportedAt: new Date().toISOString(), data: data };
+  return { app: 'SCS Projects', version: 2, exportedAt: new Date().toISOString(), data: data, billSheets: billDump_() };
 }
 /* ---------- সম্পূর্ণ ব্যাকআপ: সব ডাটা + সব সেটিংস + অ্যাক্টিভিটি লগ ---------- */
 function fullBackup_() {
@@ -442,17 +442,31 @@ function billDump_() {
 }
 function billRestore_(dump, replace) {
   if (!dump) return 0;
-  var ss = home_(), n = 0;
+  var ss = home_(), n = 0, idx = dump.BL_Index || [], ids = {};
+  idx.slice(1).forEach(function (r) { if (r[0] !== '') ids[String(r[0])] = 1; });
   BILL_SHEETS.forEach(function (nm) {
     var rows = dump[nm]; if (!rows || !rows.length) return;
-    var sh = ss.getSheetByName(nm) || ss.insertSheet(nm), w = rows[0].length;
-    if (replace || sh.getLastRow() < 1) { sh.clearContents(); sh.getRange(1, 1, rows.length, w).setNumberFormat('@').setValues(rows); n += rows.length - 1; return; }
-    var have = {}, last = sh.getLastRow(), key = function (r) { return nm === 'BL_Data' ? r[0] + '|' + r[1] : String(r[0]); };
-    if (last >= 2) sh.getRange(2, 1, last - 1, Math.max(2, Math.min(w, sh.getLastColumn()))).getValues().forEach(function (r) { have[key(r)] = 1; });
-    var add = rows.slice(1).filter(function (r) { return r[0] !== '' && !have[key(r)] && !(nm === 'BL_Settings' && /pin_hash/.test(r[0])); });
-    if (add.length) { sh.getRange(last + 1, 1, add.length, w).setNumberFormat('@').setValues(add); n += add.length; }
+    var sh = ss.getSheetByName(nm) || ss.insertSheet(nm), last = sh.getLastRow();
+    var cur = last >= 1 ? sh.getRange(1, 1, last, Math.max(1, sh.getLastColumn())).getValues() : [];
+    var head = rows[0], w = head.length, out;
+    if (replace || cur.length < 1) out = rows.slice();
+    else if (nm === 'BL_Settings') {               // সেটিংস: যা নেই শুধু তা যোগ (বর্তমান সেটিংস বদলায় না)
+      var have = {}; cur.slice(1).forEach(function (r) { have[String(r[0])] = 1; });
+      out = cur.concat(rows.slice(1).filter(function (r) { return r[0] !== '' && !have[String(r[0])] && !/pin_hash/.test(r[0]); }));
+    } else {                                        // বিল / মেজারমেন্ট: একই আইডি হলে ব্যাকআপেরটা বসে, নতুন হলে যোগ হয়
+      var keepOld = cur.slice(1).filter(function (r) { return r[0] !== '' && !ids[String(r[0])]; });
+      out = [cur[0] && cur[0][0] !== '' ? cur[0] : head].concat(keepOld, rows.slice(1).filter(function (r) { return r[0] !== '' && (nm !== 'BL_Index' || ids[String(r[0])]); }));
+    }
+    var W = 1; out.forEach(function (r) { W = Math.max(W, r.length); });
+    out = out.map(function (r) { r = r.slice(); while (r.length < W) r.push(''); return r; });
+    sh.clearContents(); if (out.length) sh.getRange(1, 1, out.length, W).setNumberFormat('@').setValues(out);
+    if (nm === 'BL_Index') n = Object.keys(ids).length;
   });
-  try { CacheService.getScriptCache().removeAll(['BL_settings_v2#n', 'BL_dbok']); } catch (e) {}
+  try {
+    var c = CacheService.getScriptCache(); c.removeAll(['BL_settings_v2#n', 'BL_dbok']);
+    var arr = []; try { arr = JSON.parse(c.get('BL_chg') || '[]'); } catch (e) {}
+    arr.push({ t: Date.now(), id: 'all', by: '' }); c.put('BL_chg', JSON.stringify(arr.slice(-150)), 21600);
+  } catch (e) {}
   return n;
 }
 function exportFull(pin) { needAdmin_(pin); return fullBackup_(); }
@@ -557,7 +571,7 @@ function restoreData(pin, jsonText, mode, withSettings) {
         if (row) sh.getRange(row, 1, 1, 4).setNumberFormat('@').setValues([[c, String(o.id), JSON.stringify(o), new Date().toISOString()]]);
       });
     });
-    return { mode: 'merge', rows: writeAll_(add) };
+    return { mode: 'merge', rows: writeAll_(add), bills: bills };
   });
 }
 function resetAll(pin) {
