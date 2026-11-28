@@ -63,27 +63,43 @@ if ($bm.Success) {
 }
 # দ্বিতীয় ধরন: <script id="scs-app-bundle" type="text/plain">BASE64</script> + আলাদা লোডার স্ক্রিপ্ট
 if ($bundle -eq $null) {
-  $cm = [regex]::Match($html, '(?s)<script[^>]*id="scs-app-bundle"[^>]*>\s*([A-Za-z0-9+/=\s]+?)\s*</script>')
+  # যেকোনো নাম: scs-app-bundle, scs-store-bundle, ...
+  $cm = [regex]::Match($html, '(?s)<script[^>]*id="(scs-[\w-]*bundle)"[^>]*>\s*([A-Za-z0-9+/=\s]+?)\s*</script>')
   if ($cm.Success) {
-    $bundle = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(($cm.Groups[1].Value -replace '\s', '')))
+    $bid = $cm.Groups[1].Value
+    $bundle = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(($cm.Groups[2].Value -replace '\s', '')))
     $html = $html.Substring(0, $cm.Index) + $html.Substring($cm.Index + $cm.Length)
-    $lm = [regex]::Match($html, "(?s)<script>(?:(?!</script>).)*?getElementById\('scs-app-bundle'\).*?</script>")
+    $lm = [regex]::Match($html, "(?s)<script>(?:(?!</script>).)*?getElementById\('" + [regex]::Escape($bid) + "'\).*?</script>")
     if ($lm.Success) { $html = $html.Substring(0, $lm.Index) + '<script>SCS_GAS_LOAD("app.js");</script>' + $html.Substring($lm.Index + $lm.Length) }
     else { $html = $html + '<script>SCS_GAS_LOAD("app.js");</script>' }
   }
 }
-# patches.json: [{ "find": "...", "replace": "...", "in": "app" | "html" }] — অ্যাপের অ্যাকাউন্ট/পিন সংযোগ
+# আলাদা বিল পাতা (SCS Projects): <script id="scs-bill-page">gzip+base64</script> -> bill.html
+#  Apps Script এ ?page=bill দিলে সার্ভার এটা খুলে দিত; এখানে বিল্ডের সময়ই আলাদা ফাইল বানানো হয়
+$bill = $null
+$bm2 = [regex]::Match($html, '(?is)<script[^>]*id=["'']?scs-bill-page["'']?[^>]*>([\s\S]*?)</script>')
+if ($bm2.Success) {
+  $b64 = $bm2.Groups[1].Value -replace '[^A-Za-z0-9+/=]', ''
+  $ms = New-Object IO.MemoryStream(, [Convert]::FromBase64String($b64))
+  $gz = New-Object IO.Compression.GZipStream($ms, [IO.Compression.CompressionMode]::Decompress)
+  $sr = New-Object IO.StreamReader($gz, [Text.Encoding]::UTF8); $bill = $sr.ReadToEnd(); $sr.Close()
+  $html = $html.Substring(0, $bm2.Index) + $html.Substring($bm2.Index + $bm2.Length)
+}
+# patches.json: [{ "find": "...", "replace": "...", "in": "app" | "html" | "bill" }] — অ্যাপের অ্যাকাউন্ট/পিন সংযোগ
 $pf = Join-Path $dest 'patches.json'
 if (Test-Path $pf) {
   $patches = [IO.File]::ReadAllText($pf, [Text.Encoding]::UTF8) | ConvertFrom-Json
   $patches = $patches | ForEach-Object { $_ }
   foreach ($p in $patches) {
-    $inApp = ($p.in -ne 'html') -and ($bundle -ne $null)
-    $txt = if ($inApp) { $bundle } else { $html }
+    $inBill = ($p.in -eq 'bill')
+    if ($inBill -and $bill -eq $null) { continue }
+    $inApp = (-not $inBill) -and ($p.in -ne 'html') -and ($bundle -ne $null)
+    $txt = if ($inBill) { $bill } elseif ($inApp) { $bundle } else { $html }
     $n = ([regex]::Matches($txt, [regex]::Escape($p.find))).Count
+    if ($p.all) { $txt = $txt.Replace($p.find, $p.replace); if ($inBill) { $bill = $txt } elseif ($inApp) { $bundle = $txt } else { $html = $txt }; continue }   # "all": true = সব জায়গায়
     if ($n -ne 1) { Write-Warning ("Patch matched $n times (expected 1): " + $p.find.Substring(0, [Math]::Min(80, $p.find.Length))); if ($n -eq 0) { continue } }
     $txt = $txt.Replace($p.find, $p.replace)
-    if ($inApp) { $bundle = $txt } else { $html = $txt }
+    if ($inBill) { $bill = $txt } elseif ($inApp) { $bundle = $txt } else { $html = $txt }
   }
 }
 # ভার্সন নম্বর: ব্রাউজার/GitHub Pages পুরনো ফাইল ক্যাশ থেকে দিলেও নতুন ফাইল আসে
@@ -102,5 +118,19 @@ else { $html = "<!doctype html>`n<html><head>" + $head + "</head><body>`n" + $ht
 $i = $html.ToLower().LastIndexOf('</body>')
 if ($i -ge 0) { $html = $html.Substring(0, $i) + $tail + $html.Substring($i) } else { $html = $html + $tail }
 
+if ($bill -ne $null) {
+  # মূল পাতা: ?page=bill বা ?q= (শেয়ার লিংক) এলে bill.html এ
+  # bill-raw.html = আসল বিল পাতা (মূল অ্যাপের ভেতরের ফ্রেমে বসে, মূল অ্যাপের ইঞ্জিন ব্যবহার করে)
+  [IO.File]::WriteAllText((Join-Path $dest 'bill-raw.html'), $bill, $utf8)
+  $redir = '<script>if(/[?&](page=bill|q=)/.test(location.search)&&!/bill\.html$/.test(location.pathname))location.replace("bill.html"+location.search+location.hash);</script>'
+  $html = ([regex]'(?i)<head[^>]*>').Replace($html, { param($m) $m.Value + "`n" + $redir }, 1)
+  $bhead = $head
+  $billTail = "`n" + $(if (Test-Path (Join-Path $dest 'adapter-bill.js')) { '<script src="adapter-bill.js?v=' + $stamp + '"></script>' } else { '' })
+  if ($bill -match '(?i)<head[^>]*>') { $bill = ([regex]'(?i)<head[^>]*>').Replace($bill, { param($m) $m.Value + "`n" + $bhead }, 1) } else { $bill = "<!doctype html>`n<html><head>" + $bhead + "</head><body>`n" + $bill + "`n</body></html>" }
+  $j = $bill.ToLower().LastIndexOf('</body>')
+  if ($j -ge 0) { $bill = $bill.Substring(0, $j) + $billTail + $bill.Substring($j) } else { $bill = $bill + $billTail }
+  [IO.File]::WriteAllText((Join-Path $dest 'bill.html'), $bill, $utf8)
+  "  + bill.html (" + [int]($bill.Length / 1024) + " KB)"
+}
 [IO.File]::WriteAllText((Join-Path $dest 'index.html'), $html, $utf8)
 "Built apps\$Key  (Code.gs " + [int]($code.Length / 1024) + " KB, index.html " + [int]($html.Length / 1024) + " KB)"

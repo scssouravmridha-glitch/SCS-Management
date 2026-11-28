@@ -1,0 +1,5 @@
+[
+  { "in": "html", "find": "scsq_", "replace": "scsw_", "all": true },
+  { "in": "html", "find": "<!--APP_NAME-->", "replace": "<script>var APP_NAME_SRV = \"SCS Workspace\";</script>" },
+  { "in": "html", "find": "function logout() {", "replace": "function logout() { if (window.SCS && SCS.signOut) { SCS.signOut(); return; }" }
+]

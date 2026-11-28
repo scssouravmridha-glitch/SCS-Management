@@ -134,7 +134,12 @@
     var go = function () {
       var s = document.createElement('script'); s.src = src;
       // অ্যাপের UI লোড শেষ -> adapter.js এর কাজ (window 'scs-app-loaded' ইভেন্ট)
-      s.onload = function () { window.SCS_APP_LOADED = true; try { window.dispatchEvent(new Event('scs-app-loaded')); } catch (e) {} };
+      s.onload = function () {
+        window.SCS_APP_LOADED = true; window.__scsStarted = true;
+        // অ্যাপের নিজের "লোড হচ্ছে" পর্দা (যেমন #scs-boot) সরানো
+        setTimeout(function () { var b = document.getElementById('scs-boot'); if (b) b.style.display = 'none'; }, 50);
+        try { window.dispatchEvent(new Event('scs-app-loaded')); } catch (e) {}
+      };
       document.body.appendChild(s);
     };
     if (test) { if (H.ready) go(); else H.onReady.push(go); return; }

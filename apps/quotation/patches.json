@@ -1,0 +1,3 @@
+[
+  { "in": "html", "find": "function logout() {", "replace": "function logout() { if (window.SCS && SCS.signOut) { SCS.signOut(); return; }" }
+]

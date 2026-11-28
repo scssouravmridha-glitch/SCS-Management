@@ -1,0 +1,3 @@
+[
+  { "find": "ACT['logout'] = function () {", "replace": "ACT['logout'] = function () { if (window.SCS && SCS.signOut) { SCS.signOut(); return; }" }
+]
