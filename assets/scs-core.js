@@ -1144,7 +1144,6 @@
 
   SCS._navWatch = function (k) {   // লোকাল টেস্ট মোডের জন্য
     navWatch(k); syncToGear(); libWatch();
-    try { SCS.watchOldBackupUI(); } catch (e) {}
     try { if (!SCS.me) SCS.me = { apps: [], profile: {}, test: true }; mountInHeader(k, 'admin', {}); } catch (e) { console.warn(e); }
   };
 
@@ -1179,7 +1178,6 @@
         try { navWatch(appKey); } catch (e) {}
         try { syncToGear(); } catch (e) {}
         try { libWatch(); SCS.libList().catch(function () {}); } catch (e) {}   // লাইব্রেরি পিকার: সবার জন্য (তালিকা আগেই আনা)
-        try { SCS.watchOldBackupUI(); } catch (e) {}   // অ্যাপের পুরনো ব্যাকআপ/রিস্টোর/রিসেট -> একটাই ব্যবস্থা
         SCS.startNotifications();
         sb.auth.onAuthStateChange(function (ev) { if (ev === 'SIGNED_OUT') location.href = SCS.url('/'); });
         var chain = Promise.resolve();
@@ -1264,44 +1262,7 @@
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', SCS.fillStart); else SCS.fillStart();
 
-  /* ---------------- অ্যাপগুলোর নিজের পুরনো ব্যাকআপ/রিস্টোর/রিসেট সরানো ----------------
-   *  সব অ্যাপে এখন একটাই ব্যবস্থা (⚙ > ব্যাকআপ · রিস্টোর · রিসেট)। অ্যাপের ভেতরের পুরনো বাটন, ট্যাব আর
-   *  কার্ড DOM থেকে মুছে ফেলা হয় (React অ্যাপে React এর অংশ মোছা যায় না, তাই সেখানে দেখানো বন্ধ)। */
-  var OLD_BK = /\b(back\s?-?ups?|restore|full\s+reset|reset\s+(all|data|everything|app))\b|ব্যাকআপ|রিস্টোর|ডাটা\s*রিসেট|সব\s*রিসেট|রিসেট\s*(করুন|দিন)?$/i;
-  var NOT_BK = /\bpin\b|পিন|filter|ফিল্টার|zoom|password|পাসওয়ার্ড|view|layout|column|কলাম/i;
-  function isReactNode(el) { for (var k in el) if (k.indexOf('__react') === 0) return true; return false; }
-  function dropEl(el) {
-    if (!el || el.closest('.scs-bk,.scs-menu,.scs-sheet,.scs-ui')) return;
-    // খোলা ট্যাবটাই মুছলে পাশের ট্যাব খোলা (না হলে পাতা ফাঁকা দেখায়)
-    var active = /(^|\s)(on|active|sel|selected|current)(\s|$)/.test(String(el.className || '')) || el.getAttribute('aria-selected') === 'true';
-    (SCS._dropped = SCS._dropped || []).push(el.tagName + ': ' + String(el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60));
-    var sib = active && el.parentNode ? [].filter.call(el.parentNode.children, function (x) { return x !== el && x.tagName === el.tagName && x.offsetParent !== null; })[0] : null;
-    if (isReactNode(el) || isReactNode(el.parentNode || {})) el.style.setProperty('display', 'none', 'important'); else el.remove();
-    if (sib) setTimeout(function () { try { sib.click(); } catch (e) {} }, 0);
-  }
-  SCS.dropOldBackupUI = function (root) {
-    root = root || document.body; if (!root || !root.querySelectorAll) return;
-    root.querySelectorAll('#bkCard,.bkcard').forEach(dropEl);
-    root.querySelectorAll('button,a,[role=tab],[data-tab],[data-v],[data-view],[data-act],[data-a],option,li').forEach(function (b) {
-      if (b.closest('.scs-bk,.scs-menu,.scs-sheet,.scs-ui,header .scs-gear')) return;
-      var tx = ((b.textContent || '') + ' ' + (b.getAttribute('title') || '')).replace(/\s+/g, ' ').trim();
-      if (!tx || tx.length > 70 || NOT_BK.test(tx) || !OLD_BK.test(tx)) return;
-      if (b.tagName === 'LI' && b.querySelector('input,select,textarea')) return;
-      dropEl(b);
-    });
-    root.querySelectorAll('h2,h3,h4,legend,summary').forEach(function (h) {
-      var tx = (h.textContent || '').replace(/\s+/g, ' ').trim();
-      if (!tx || tx.length > 80 || NOT_BK.test(tx) || !OLD_BK.test(tx)) return;
-      var box = h.closest('.card,section,fieldset,details,.bksec,.panel,.box') || h.parentNode;
-      if (box && box !== document.body && !box.matches('main,#root,#app,body') && (box.textContent || '').length < 6000) dropEl(box); else dropEl(h);
-    });
-  };
-  function watchOldBackupUI() {
-    var t = null, run = function () { t = null; try { SCS.dropOldBackupUI(); } catch (e) {} };
-    run();
-    try { new MutationObserver(function () { if (!t) t = setTimeout(run, 120); }).observe(document.body, { childList: true, subtree: true }); } catch (e) {}
-  }
-  SCS.watchOldBackupUI = watchOldBackupUI;
+  /* অ্যাপগুলোর নিজের ব্যাকআপ · রিস্টোর · রিসেট যেমন ছিল তেমনই থাকে (Apps Script এর JSON ফাইল সেখানেই রিস্টোর হয়) */
 
   /* ---------------- ব্যাকআপ · রিস্টোর · রিসেট (সব অ্যাপে একই) — assets/scs-backup.js ---------------- */
   SCS.BACKUP_V = '15';
